@@ -15,24 +15,27 @@ interface ClassItem {
 }
 
 const classes: ClassItem[] = [
-  { name: "Barbell Strength", focus: "Strength", location: "Studio", duration: "60 min", day: "Monday", time: "07:00", spots: 3 },
-  { name: "Outdoor Conditioning", focus: "Conditioning", location: "Outdoor", duration: "50 min", day: "Monday", time: "18:30", spots: 5 },
-  { name: "Upper Body Power", focus: "Strength", location: "Studio", duration: "60 min", day: "Tuesday", time: "07:00", spots: 2 },
-  { name: "Beach HIIT", focus: "Conditioning", location: "Outdoor", duration: "45 min", day: "Wednesday", time: "07:30", spots: 6 },
-  { name: "Posterior Chain", focus: "Strength", location: "Studio", duration: "60 min", day: "Wednesday", time: "18:30", spots: 1 },
-  { name: "Mobility Flow", focus: "Mobility", location: "Studio", duration: "45 min", day: "Thursday", time: "12:00", spots: 4 },
-  { name: "Full Body Strength", focus: "Strength", location: "Studio", duration: "60 min", day: "Friday", time: "07:00", spots: 3 },
-  { name: "Park Circuit", focus: "Conditioning", location: "Outdoor", duration: "50 min", day: "Saturday", time: "09:00", spots: 8 },
+  { name: "Strength Foundations", focus: "Strength", location: "Studio", duration: "60 min", day: "Monday", time: "07:00", spots: 3 },
+  { name: "Beach Conditioning", focus: "Conditioning", location: "Outdoor", duration: "45 min", day: "Tuesday", time: "06:30", spots: 5 },
+  { name: "Mobility Flow", focus: "Mobility", location: "Studio", duration: "45 min", day: "Wednesday", time: "12:00", spots: 4 },
+  { name: "Power Circuit", focus: "Conditioning", location: "Outdoor", duration: "50 min", day: "Thursday", time: "07:00", spots: 2 },
+  { name: "Upper Body Focus", focus: "Strength", location: "Studio", duration: "60 min", day: "Friday", time: "08:00", spots: 4 },
+  { name: "Park Training", focus: "Conditioning", location: "Outdoor", duration: "60 min", day: "Saturday", time: "09:00", spots: 6 },
 ];
 
 const focusColor = (focus: string) => {
   switch (focus) {
-    case "Strength": return "bg-primary/20 text-primary border-primary/30";
-    case "Conditioning": return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
-    case "Mobility": return "bg-sky-500/20 text-sky-400 border-sky-500/30";
+    case "Strength": return "bg-primary/15 text-primary border-primary/30";
+    case "Conditioning": return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+    case "Mobility": return "bg-sky-500/15 text-sky-400 border-sky-500/30";
     default: return "";
   }
 };
+
+const locationStyle = (loc: "Studio" | "Outdoor") =>
+  loc === "Studio"
+    ? "bg-muted text-muted-foreground"
+    : "bg-primary/15 text-primary";
 
 const ScheduleSection = () => {
   const { handleBook } = useBooking();
@@ -54,56 +57,58 @@ const ScheduleSection = () => {
           </p>
         </motion.div>
 
-        <div className="grid gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {classes.map((cls, i) => (
             <motion.div
-              key={cls.name + cls.day}
-              initial={{ opacity: 0, y: 12 }}
+              key={cls.name}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: i * 0.05 }}
-              className="bg-card border border-border rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 hover:border-primary/30 transition-colors"
+              transition={{ duration: 0.4, delay: i * 0.07 }}
+              className="bg-card border border-border rounded-xl p-5 sm:p-6 flex flex-col justify-between hover:border-primary/30 transition-colors group"
             >
-              {/* Day/Time */}
-              <div className="sm:w-32 shrink-0">
-                <p className="text-sm font-medium text-muted-foreground">{cls.day}</p>
-                <p className="text-lg font-semibold">{cls.time}</p>
-              </div>
-
-              {/* Class info */}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold mb-1.5">{cls.name}</h3>
-                <div className="flex flex-wrap gap-2">
-                  <span className={`text-xs px-2.5 py-0.5 rounded-full border font-medium ${focusColor(cls.focus)}`}>
-                    {cls.focus}
-                  </span>
-                  <Badge variant="outline" className="text-xs font-normal gap-1">
+              {/* Header: name + location badge */}
+              <div>
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <h3 className="text-lg font-semibold leading-snug">{cls.name}</h3>
+                  <span className={`text-[11px] px-2.5 py-1 rounded-full font-medium shrink-0 flex items-center gap-1.5 ${locationStyle(cls.location)}`}>
                     <MapPin className="w-3 h-3" />
                     {cls.location}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs font-normal gap-1">
-                    <Clock className="w-3 h-3" />
+                  </span>
+                </div>
+
+                {/* Focus tag */}
+                <span className={`inline-block text-xs px-2.5 py-0.5 rounded-full border font-medium mb-4 ${focusColor(cls.focus)}`}>
+                  {cls.focus}
+                </span>
+
+                {/* Day + Time */}
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-sm font-semibold">{cls.day}</span>
+                  <span className="text-muted-foreground text-sm">{cls.time}</span>
+                </div>
+
+                {/* Duration + Spots */}
+                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-5">
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5" />
                     {cls.duration}
-                  </Badge>
+                  </span>
+                  <span className={`flex items-center gap-1.5 ${cls.spots <= 2 ? "text-primary font-medium" : ""}`}>
+                    <Users className="w-3.5 h-3.5" />
+                    {cls.spots} {cls.spots === 1 ? "spot" : "spots"} left
+                  </span>
                 </div>
               </div>
 
-              {/* Availability + Book */}
-              <div className="flex items-center gap-4 sm:shrink-0">
-                <div className="flex items-center gap-1.5 text-sm">
-                  <Users className="w-4 h-4 text-muted-foreground" />
-                  <span className={cls.spots <= 2 ? "text-primary font-medium" : "text-muted-foreground"}>
-                    {cls.spots} {cls.spots === 1 ? "spot" : "spots"}
-                  </span>
-                </div>
-                <Button
-                  size="sm"
-                  className="rounded-lg font-medium"
-                  onClick={() => handleBook(cls.name)}
-                >
-                  Book
-                </Button>
-              </div>
+              {/* Book button */}
+              <Button
+                variant="outline"
+                className="w-full rounded-lg font-medium border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
+                onClick={() => handleBook(cls.name)}
+              >
+                Book This Session
+              </Button>
             </motion.div>
           ))}
         </div>
