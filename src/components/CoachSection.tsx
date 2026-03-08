@@ -36,7 +36,7 @@ const CoachSection = () => {
           >
             <div className="aspect-[3/4] rounded-2xl overflow-hidden">
               <img
-                src="https://images.unsplash.com/photo-1567013127542-490d483ba18a?w=800&q=80"
+                src="https://images.unsplash.com/photo-1595078475328-1ab05d0a6a0e?w=800&q=80"
                 alt="Alex Moreno — Strength & Conditioning Coach"
                 className="w-full h-full object-cover"
                 loading="lazy"
