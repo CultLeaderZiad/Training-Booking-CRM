@@ -110,8 +110,7 @@ const ScheduleSection = () => {
                 </Button>
               </motion.div>
             ))}
-          </motion.div>
-        </AnimatePresence>
+        </div>
       </div>
     </section>
   );
