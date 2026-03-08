@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { CheckCircle } from "lucide-react";
+import coachPortrait from "@/assets/coach-portrait.png";
 
 const credentials = [
   "10+ years coaching athletes and professionals",
