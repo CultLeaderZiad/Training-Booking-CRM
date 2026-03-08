@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useBooking } from "@/hooks/use-booking";
 import { Button } from "@/components/ui/button";
 import { MapPin, Clock, Users } from "lucide-react";
@@ -15,24 +14,19 @@ interface ClassItem {
 }
 
 const classes: ClassItem[] = [
-  // Strength
   { name: "Strength Foundations", focus: "Strength", location: "Studio", duration: "60 min", day: "Monday", time: "07:00", spots: 3 },
-  { name: "Upper Body Focus", focus: "Strength", location: "Studio", duration: "60 min", day: "Wednesday", time: "08:00", spots: 4 },
-  { name: "Posterior Chain", focus: "Strength", location: "Studio", duration: "60 min", day: "Friday", time: "07:00", spots: 2 },
-  { name: "Full Body Power", focus: "Strength", location: "Studio", duration: "55 min", day: "Saturday", time: "10:00", spots: 3 },
-  // Conditioning
   { name: "Beach Conditioning", focus: "Conditioning", location: "Outdoor", duration: "45 min", day: "Tuesday", time: "06:30", spots: 5 },
+  { name: "Mobility Flow", focus: "Mobility", location: "Studio", duration: "45 min", day: "Wednesday", time: "12:00", spots: 4 },
   { name: "Power Circuit", focus: "Conditioning", location: "Outdoor", duration: "50 min", day: "Thursday", time: "07:00", spots: 2 },
+  { name: "Upper Body Focus", focus: "Strength", location: "Studio", duration: "60 min", day: "Friday", time: "08:00", spots: 4 },
   { name: "Park Training", focus: "Conditioning", location: "Outdoor", duration: "60 min", day: "Saturday", time: "09:00", spots: 6 },
   { name: "HIIT Express", focus: "Conditioning", location: "Studio", duration: "30 min", day: "Monday", time: "18:00", spots: 4 },
-  // Mobility
-  { name: "Mobility Flow", focus: "Mobility", location: "Studio", duration: "45 min", day: "Wednesday", time: "12:00", spots: 4 },
+  { name: "Posterior Chain", focus: "Strength", location: "Studio", duration: "60 min", day: "Wednesday", time: "08:00", spots: 2 },
   { name: "Recovery Session", focus: "Mobility", location: "Studio", duration: "40 min", day: "Friday", time: "18:00", spots: 6 },
+  { name: "Full Body Power", focus: "Strength", location: "Studio", duration: "55 min", day: "Saturday", time: "10:00", spots: 3 },
   { name: "Morning Stretch", focus: "Mobility", location: "Outdoor", duration: "30 min", day: "Sunday", time: "08:00", spots: 8 },
+  { name: "Sprint Intervals", focus: "Conditioning", location: "Outdoor", duration: "40 min", day: "Tuesday", time: "18:00", spots: 5 },
 ];
-
-const categories = ["All", "Strength", "Conditioning", "Mobility"] as const;
-type Category = (typeof categories)[number];
 
 const focusColor = (focus: string) => {
   switch (focus) {
@@ -50,9 +44,6 @@ const locationStyle = (loc: "Studio" | "Outdoor") =>
 
 const ScheduleSection = () => {
   const { handleBook } = useBooking();
-  const [active, setActive] = useState<Category>("All");
-
-  const filtered = active === "All" ? classes : classes.filter((c) => c.focus === active);
 
   return (
     <section id="schedule" className="py-20 sm:py-28 px-6">
@@ -71,37 +62,8 @@ const ScheduleSection = () => {
           </p>
         </motion.div>
 
-        {/* Category filter tabs */}
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-none">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActive(cat)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                active === cat
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/30"
-              }`}
-            >
-              {cat}
-              <span className="ml-1.5 text-xs opacity-70">
-                ({cat === "All" ? classes.length : classes.filter((c) => c.focus === cat).length})
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Cards grid */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.25 }}
-            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"
-          >
-            {filtered.map((cls, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {classes.map((cls, i) => (
               <motion.div
                 key={cls.name + cls.day}
                 initial={{ opacity: 0, y: 20 }}
@@ -148,8 +110,7 @@ const ScheduleSection = () => {
                 </Button>
               </motion.div>
             ))}
-          </motion.div>
-        </AnimatePresence>
+        </div>
       </div>
     </section>
   );
