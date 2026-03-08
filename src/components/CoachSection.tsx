@@ -39,7 +39,7 @@ const CoachSection = () => {
               <img
                 src={coachPortrait}
                 alt="Alex Moreno — Strength & Conditioning Coach"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-top"
                 loading="lazy"
               />
             </div>
