@@ -2,8 +2,17 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBooking } from "@/hooks/use-booking";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LayoutDashboard, ShieldCheck, User, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { UserAvatar } from "@/components/UserAvatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const links = [
   { label: "Schedule", href: "#schedule" },
@@ -14,6 +23,7 @@ const links = [
 
 const StickyHeader = () => {
   const { handleBook } = useBooking();
+  const { user, role, signOut } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -50,11 +60,56 @@ const StickyHeader = () => {
               {l.label}
             </button>
           ))}
-          <Link to="/login">
-            <Button size="sm" variant="ghost" className="rounded-lg font-medium text-muted-foreground hover:text-foreground">
-              Login
-            </Button>
-          </Link>
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <UserAvatar 
+                    avatarPath={user.user_metadata?.avatar_url} 
+                    name={user.user_metadata?.full_name} 
+                    email={user.email} 
+                    className="h-8 w-8" 
+                  />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuItem asChild>
+                  <Link to="/profile" className="cursor-pointer w-full flex items-center">
+                    <User className="w-4 h-4 mr-2 text-muted-foreground" />
+                    <span>Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                
+                {role === 'admin' ? (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin" className="cursor-pointer w-full flex items-center">
+                      <ShieldCheck className="w-4 h-4 mr-2 text-orange-500" />
+                      <span className="font-medium">Admin Dashboard</span>
+                    </Link>
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="cursor-pointer w-full flex items-center">
+                      <LayoutDashboard className="w-4 h-4 mr-2 text-primary" />
+                      <span>Dashboard</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer text-red-500 focus:text-red-500 flex items-center">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  <span>Log Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link to="/login">
+              <Button size="sm" variant="ghost" className="rounded-lg font-medium text-muted-foreground hover:text-foreground">
+                Login
+              </Button>
+            </Link>
+          )}
           <Button size="sm" className="rounded-lg font-medium" onClick={() => handleBook()}>
             Book Now
           </Button>
@@ -62,11 +117,56 @@ const StickyHeader = () => {
 
         {/* Mobile */}
         <div className="flex md:hidden items-center gap-2">
-          <Link to="/login">
-            <Button size="sm" variant="ghost" className="rounded-lg font-medium text-xs px-2 text-muted-foreground">
-              Login
-            </Button>
-          </Link>
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full mr-2">
+                  <UserAvatar 
+                    avatarPath={user.user_metadata?.avatar_url} 
+                    name={user.user_metadata?.full_name} 
+                    email={user.email} 
+                    className="h-8 w-8" 
+                  />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuItem asChild>
+                  <Link to="/profile" className="cursor-pointer w-full flex items-center">
+                    <User className="w-4 h-4 mr-2 text-muted-foreground" />
+                    <span>Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                
+                {role === 'admin' ? (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin" className="cursor-pointer w-full flex items-center">
+                      <ShieldCheck className="w-4 h-4 mr-2 text-orange-500" />
+                      <span className="font-medium">Admin Dashboard</span>
+                    </Link>
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="cursor-pointer w-full flex items-center">
+                      <LayoutDashboard className="w-4 h-4 mr-2 text-primary" />
+                      <span>Dashboard</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer text-red-500 focus:text-red-500 flex items-center">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  <span>Log Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link to="/login">
+              <Button size="sm" variant="ghost" className="rounded-lg font-medium text-xs px-2 text-muted-foreground">
+                Login
+              </Button>
+            </Link>
+          )}
           <Button size="sm" className="rounded-lg font-medium text-xs px-3.5" onClick={() => handleBook()}>
             Book
           </Button>

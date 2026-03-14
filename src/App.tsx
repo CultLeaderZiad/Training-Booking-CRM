@@ -12,6 +12,7 @@ import Signup from "./pages/auth/Signup";
 import AccessDenied from "./pages/auth/AccessDenied";
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import UserDashboard from "./pages/dashboard/UserDashboard";
+import Profile from "./pages/dashboard/Profile";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
 
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard/*" element={<UserDashboard />} />
+              <Route path="/profile" element={<Profile />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

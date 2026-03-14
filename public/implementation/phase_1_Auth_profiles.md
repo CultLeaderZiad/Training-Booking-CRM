@@ -19,7 +19,10 @@
 - [ ] **Login Page**:
   - Create `src/pages/auth/Login.tsx` (implement email/password login).
 
-## 3. Mockup Dashboards & Testing
+## 3. Mockup Dashboards & Profiles
+- [x] **Profile Page**:
+  - Implemented `Profile.tsx` for users of any role type.
+  - Replaced "Dashboard"/Login button on root page with Avatar dropdown (Profile, Log Out).
 - [ ] **Protected Routes**:
   - Implement a protected route wrapper for dashboards.
 - [ ] **User Dashboard**:
