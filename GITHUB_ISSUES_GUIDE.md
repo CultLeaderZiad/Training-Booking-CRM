@@ -54,4 +54,5 @@ When proposing or logging new issues in this repository, please adhere to our pr
 
 1. **Bug Reports**: Include clear steps to reproduce, expected behavior, and actual behavior. Provide screenshots if ui-related.
 2. **Feature Requests**: Reference the `IMPLEMENTATION PLAN.md` if the feature is already part of the roadmap. Detail the user story and clear acceptance criteria.
-3. **Tasks & Chores**: Break down larger features from the implementation plan into manageable, deployable slices (e.g., "Implement Supabase Auth Context" or "Design Admin Dashboard Outline"). Include checklists for sub-tasks to easily track progress.
+3. **Tasks & Chores**: Break down larger features from the implementation plan into manageable, deployable slices.
+4. **Project Tracking**: Every created issue MUST be added to the GitHub Project board (e.g., in "To Do") so we can track the overall progress and sync activities.
