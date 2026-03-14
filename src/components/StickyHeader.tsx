@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useBooking } from "@/hooks/use-booking";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const links = [
   { label: "Schedule", href: "#schedule" },
@@ -49,14 +50,24 @@ const StickyHeader = () => {
               {l.label}
             </button>
           ))}
+          <Link to="/login">
+            <Button size="sm" variant="ghost" className="rounded-lg font-medium text-muted-foreground hover:text-foreground">
+              Login
+            </Button>
+          </Link>
           <Button size="sm" className="rounded-lg font-medium" onClick={() => handleBook()}>
             Book Now
           </Button>
         </nav>
 
         {/* Mobile */}
-        <div className="flex md:hidden items-center gap-3">
-          <Button size="sm" className="rounded-lg font-medium text-xs" onClick={() => handleBook()}>
+        <div className="flex md:hidden items-center gap-2">
+          <Link to="/login">
+            <Button size="sm" variant="ghost" className="rounded-lg font-medium text-xs px-2 text-muted-foreground">
+              Login
+            </Button>
+          </Link>
+          <Button size="sm" className="rounded-lg font-medium text-xs px-3.5" onClick={() => handleBook()}>
             Book
           </Button>
           <button onClick={() => setMenuOpen(!menuOpen)} className="text-foreground p-1">
