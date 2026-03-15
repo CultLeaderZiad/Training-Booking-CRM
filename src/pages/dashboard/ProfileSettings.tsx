@@ -6,11 +6,14 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { toast } from 'sonner';
 import { UserAvatar } from '../../components/UserAvatar';
-import { Camera, MapPin, Phone, Mail, User } from 'lucide-react';
+import { Camera, MapPin, Phone, Mail, User, Loader2 } from 'lucide-react';
+import { useRef } from 'react';
 
 export default function ProfileSettings() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<any>({
     first_name: '',
@@ -43,11 +46,16 @@ export default function ProfileSettings() {
       if (error) throw error;
       if (data) {
         setProfile({
-          ...profile,
-          ...data,
           first_name: data.first_name || '',
           last_name: data.last_name || '',
+          phone_prefix: data.phone_prefix || '+44',
           phone_number: data.phone_number || '',
+          address_line1: data.address_line1 || '',
+          address_line2: data.address_line2 || '',
+          city: data.city || '',
+          county: data.county || '',
+          post_code: data.post_code || '',
+          country: data.country || 'United Kingdom',
         });
       }
     } catch (error: any) {
@@ -87,6 +95,52 @@ export default function ProfileSettings() {
     }
   };
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploading(true);
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}-${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl }
+      });
+
+      if (updateError) throw updateError;
+
+      // Update profile table as well
+      await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user?.id);
+
+      toast.success('Profile picture updated!');
+      if (refreshUser) refreshUser();
+    } catch (error: any) {
+      toast.error('Error uploading image: ' + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center min-h-[400px]">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f97316]"></div>
@@ -97,16 +151,28 @@ export default function ProfileSettings() {
     <div className="max-w-4xl mx-auto space-y-10">
       {/* Header / Avatar */}
       <div className="flex flex-col md:flex-row items-center gap-6">
-         <div className="relative group">
+          <div className="relative group">
             <UserAvatar 
               avatarPath={user?.user_metadata?.avatar_url} 
               name={user?.user_metadata?.full_name} 
               className="w-24 h-24 border-2 border-border/50 shadow-xl"
             />
-            <button className="absolute bottom-0 right-0 p-2 bg-[#f97316] rounded-full text-white shadow-lg group-hover:scale-110 transition-transform">
-               <Camera className="w-4 h-4" />
+            <button 
+              type="button"
+              onClick={handleAvatarClick}
+              disabled={uploading}
+              className="absolute bottom-0 right-0 p-2 bg-[#f97316] rounded-full text-white shadow-lg group-hover:scale-110 transition-transform flex items-center justify-center min-w-[32px] min-h-[32px]"
+            >
+               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
             </button>
-         </div>
+            <input 
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/*"
+              className="hidden"
+            />
+          </div>
          <div className="text-center md:text-left">
             <h1 className="text-2xl font-black text-white uppercase tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
               {profile.first_name} {profile.last_name || 'Member'}

@@ -44,7 +44,7 @@ export default function UserLayout() {
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id)
           .eq('is_read', false);
-        setUnreadCount(count || 0);
+        setUnreadCount(Number(count) || 0);
       };
       fetchUnread();
     }

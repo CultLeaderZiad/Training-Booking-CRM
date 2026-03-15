@@ -121,8 +121,8 @@ export default function MyBookings() {
               const dateValid = d && isValid(d);
 
               return (
-                <div key={booking.id} className="bg-[#1A1D24] border border-border/50 rounded-2xl p-6 flex items-center gap-6 group hover:border-[#f97316]/30 transition-all">
-                   <div className="w-14 h-14 rounded-2xl bg-black/40 border border-white/5 flex flex-col items-center justify-center text-center shrink-0">
+                <div key={booking.id} className="bg-[#1A1D24] border border-border/50 rounded-2xl p-5 md:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 group hover:border-[#f97316]/30 transition-all relative">
+                   <div className="w-14 h-14 rounded-2xl bg-black/40 border border-white/5 flex flex-col items-center justify-center text-center shrink-0 self-start sm:self-center">
                       <span className="text-[10px] font-black text-gray-500 uppercase leading-none">{dateValid ? format(d, 'MMM') : '---'}</span>
                       <span className="text-xl font-black text-white leading-none mt-1">{dateValid ? format(d, 'd') : '?'}</span>
                    </div>
@@ -138,7 +138,7 @@ export default function MyBookings() {
                       </div>
                    </div>
 
-                   <div className="flex items-center gap-3">
+                   <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 border-white/5 pt-4 sm:pt-0">
                       {(booking.status === 'pending' || booking.status === 'confirmed') && (
                         <Button 
                           variant="ghost" 

@@ -16,10 +16,14 @@ import {
   ChevronRight,
   Bell,
   Search,
-  CheckCircle2
+  CheckCircle2,
+  Trash2,
+  Zap,
+  Info
 } from 'lucide-react';
 import { format, startOfWeek, addDays, isSameDay, parseISO, isValid } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '../../components/ui/sheet';
 
 export default function WeeklySchedule() {
   const { user } = useAuth();
@@ -32,6 +36,7 @@ export default function WeeklySchedule() {
   const [myBookings, setMyBookings] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('ALL');
+  const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
 
   // Weekly navigation state
   const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -50,14 +55,20 @@ export default function WeeklySchedule() {
   const fetchSessions = async () => {
     try {
       setLoading(true);
-      const weekEnd = addDays(currentWeekStart, 7).toISOString();
-      const weekStartStr = currentWeekStart.toISOString();
+      const weekStart = new Date(currentWeekStart);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      weekEnd.setHours(23, 59, 59, 999);
+
+      const weekStartStr = weekStart.toISOString();
+      const weekEndStr = weekEnd.toISOString();
 
       const { data, error } = await supabase
         .from('sessions')
         .select('*, session_types(*), bookings:bookings(count)')
         .gte('start_time', weekStartStr)
-        .lte('start_time', weekEnd)
+        .lte('start_time', weekEndStr)
         .order('start_time', { ascending: true });
 
       if (error) throw error;
@@ -108,9 +119,28 @@ export default function WeeklySchedule() {
 
       toast.success("Booking request sent! Trainer will confirm shortly.");
       setIsBookingModalOpen(false);
-      fetchMyBookings();
+      await fetchMyBookings();
+      await fetchSessions();
     } catch (error: any) {
       toast.error("Booking failed: " + error.message);
+    }
+  };
+
+  const handleCancelBooking = async (sessionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled' })
+        .eq('user_id', user?.id)
+        .eq('scheduled_session_id', sessionId);
+
+      if (error) throw error;
+
+      toast.success("Booking cancelled.");
+      await fetchMyBookings();
+      await fetchSessions();
+    } catch (error: any) {
+      toast.error("Failed to cancel: " + error.message);
     }
   };
 
@@ -201,7 +231,36 @@ export default function WeeklySchedule() {
                    </div>
 
                    <Button 
-                     onClick={() => setView('grid')}
+                     onClick={async () => {
+                        setSelectedStyleId(st.id);
+                        
+                        // Check if sessions exist for this style in the current week
+                        const styleSessions = sessions.filter(s => s.session_type_id === st.id);
+                        
+                        if (styleSessions.length === 0) {
+                           // Try to find the next available session for this style
+                           setLoading(true);
+                           const { data: nextSession } = await supabase
+                              .from('sessions')
+                              .select('start_time')
+                              .eq('session_type_id', st.id)
+                              .gte('start_time', new Date().toISOString())
+                              .order('start_time', { ascending: true })
+                              .limit(1)
+                              .single();
+                           
+                           if (nextSession) {
+                              const nextDate = parseISO(nextSession.start_time);
+                              setCurrentWeekStart(startOfWeek(nextDate, { weekStartsOn: 1 }));
+                              toast.info(`Showing sessions for the week of ${format(nextDate, 'MMM d')}`);
+                           } else {
+                              toast.info("No future sessions found for this style yet.");
+                           }
+                           setLoading(false);
+                        }
+                        
+                        setView('grid');
+                     }}
                      className="mt-auto h-14 bg-[#f97316] hover:bg-[#ea580c] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-[#f97316]/10"
                    >
                       Select & Choose Time <ChevronRight className="w-4 h-4 ml-2" />
@@ -241,8 +300,16 @@ export default function WeeklySchedule() {
                    </Button>
                 </div>
                 
-                <Button variant="outline" className="border-border/50 text-gray-400 text-[10px] uppercase font-black tracking-widest hover:text-white h-10 px-4 rounded-xl">
-                   <Filter className="w-3.5 h-3.5 mr-2" /> Filters
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setSelectedStyleId(null);
+                    setActiveCategory('ALL');
+                    setSearchQuery('');
+                  }}
+                  className="border-border/50 text-gray-400 text-[10px] uppercase font-black tracking-widest hover:text-white h-10 px-4 rounded-xl"
+                >
+                   <Filter className="w-3.5 h-3.5 mr-2" /> Clear Filters
                 </Button>
              </div>
           </div>
@@ -253,69 +320,100 @@ export default function WeeklySchedule() {
                  [1,2,3,4,5,6].map(i => (
                    <div key={i} className="h-[250px] rounded-3xl bg-[#1A1D24] animate-pulse border border-border/50" />
                  ))
-               ) : sessions.length > 0 ? (
-                 sessions.map((session) => {
-                   const bookedCount = session.bookings?.[0]?.count || 0;
-                   const spotsLeft = Math.max(0, session.capacity - bookedCount);
-                   const progress = (bookedCount / session.capacity) * 100;
-                   const isAlreadyBooked = myBookings.includes(session.id);
+               ) : sessions.filter(s => !selectedStyleId || s.session_type_id === selectedStyleId).length > 0 ? (
+                 sessions
+                   .filter(s => !selectedStyleId || s.session_type_id === selectedStyleId)
+                   .map((session) => {
+                     const bookedCount = session.bookings?.[0]?.count || 0;
+                     const spotsLeft = Math.max(0, session.capacity - bookedCount);
+                     const progress = (bookedCount / session.capacity) * 100;
+                     const isAlreadyBooked = myBookings.includes(session.id);
 
-                   return (
-                     <div key={session.id} className="group bg-[#1A1D24] border border-border/50 rounded-3xl p-6 relative overflow-hidden flex flex-col hover:border-[#f97316]/30 transition-all duration-300">
-                        <div className="absolute top-0 right-0 p-4">
-                           <Badge variant="outline" className="bg-black/20 border-white/5 text-gray-400 text-[8px] uppercase font-black flex items-center gap-1.5">
-                              <MapPin className="w-2.5 h-2.5" /> Studio
-                           </Badge>
-                        </div>
+                     return (
+                       <div key={session.id} className="group bg-[#1A1D24] border border-border/50 rounded-3xl p-6 relative overflow-hidden flex flex-col hover:border-[#f97316]/30 transition-all duration-300">
+                          <div className="absolute top-0 right-0 p-4">
+                             <Badge variant="outline" className="bg-black/20 border-white/5 text-gray-400 text-[8px] uppercase font-black flex items-center gap-1.5">
+                                <MapPin className="w-2.5 h-2.5" /> Studio
+                             </Badge>
+                          </div>
 
-                        <div className="mb-4">
-                           <h3 className="text-lg font-black text-white group-hover:text-[#f97316] transition-colors leading-tight mb-1">{session.title}</h3>
-                           <Badge className="bg-[#f97316]/10 text-[#f97316] border-none text-[8px] font-black uppercase px-2 py-0.5">{session.session_types?.name}</Badge>
-                        </div>
+                          <div className="mb-4">
+                             <h3 className="text-lg font-black text-white group-hover:text-[#f97316] transition-colors leading-tight mb-1">{session.title}</h3>
+                             <Badge className="bg-[#f97316]/10 text-[#f97316] border-none text-[8px] font-black uppercase px-2 py-0.5">{session.session_types?.name}</Badge>
+                          </div>
 
-                        <div className="space-y-3 mb-6">
-                           <div className="flex items-center gap-2 text-gray-400">
-                              <span className="text-xs font-bold text-white">{safeFormat(session.start_time, 'EEEE')}</span>
-                              <span className="text-xs">{safeFormat(session.start_time, 'HH:mm')}</span>
-                           </div>
-                           <div className="flex items-center gap-4 text-[10px] text-gray-500 font-medium uppercase tracking-widest">
-                              <span className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-[#f97316]" /> {session.session_types?.duration || 60} Min</span>
-                              <span className="flex items-center gap-1.5"><Users className="w-3 h-3 text-[#f97316]" /> {spotsLeft} spots left</span>
-                           </div>
-                        </div>
+                          <div className="space-y-3 mb-6">
+                             <div className="flex items-center gap-2 text-gray-400">
+                                <span className="text-xs font-bold text-white">{safeFormat(session.start_time, 'EEEE')}</span>
+                                <span className="text-xs">{safeFormat(session.start_time, 'HH:mm')}</span>
+                             </div>
+                             <div className="flex items-center gap-4 text-[10px] text-gray-500 font-medium uppercase tracking-widest">
+                                <span className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-[#f97316]" /> {session.session_types?.duration || 60} Min</span>
+                                <span className="flex items-center gap-1.5"><Users className="w-3 h-3 text-[#f97316]" /> {spotsLeft} spots left</span>
+                             </div>
+                          </div>
 
-                        <div className="mt-auto pt-6 border-t border-white/5 space-y-4">
-                           <div className="space-y-2">
-                              <div className="flex justify-between text-[10px] font-black text-gray-500 uppercase tracking-tighter">
-                                 <span>Capacity</span>
-                                 <span className={spotsLeft <= 2 ? 'text-red-500' : ''}>{bookedCount}/{session.capacity} Booked</span>
-                              </div>
-                              <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden">
-                                 <div 
-                                   className={`h-full transition-all duration-500 ${spotsLeft <= 2 ? 'bg-red-500' : 'bg-[#f97316]'}`} 
-                                   style={{ width: `${progress}%` }} 
-                                 />
-                              </div>
-                           </div>
-                           
-                           <Button 
-                             disabled={spotsLeft === 0 || isAlreadyBooked}
-                             onClick={() => {
-                               setSelectedSession(session);
-                               setIsBookingModalOpen(true);
-                             }}
-                             className={`w-full h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg transition-all ${isAlreadyBooked ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-[#f97316] hover:bg-[#ea580c] text-white'}`}
-                           >
-                              {isAlreadyBooked ? 'ALREADY BOOKED' : spotsLeft === 0 ? 'FULLY BOOKED' : 'BOOK THIS SESSION'}
-                           </Button>
-                        </div>
-                     </div>
-                   );
-                 })
+                          <div className="mt-auto pt-6 border-t border-white/5 space-y-4">
+                             <div className="space-y-2">
+                                <div className="flex justify-between text-[10px] font-black text-gray-500 uppercase tracking-tighter">
+                                   <span>Capacity</span>
+                                   <span className={spotsLeft <= 2 ? 'text-red-500' : ''}>{bookedCount}/{session.capacity} Booked</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden">
+                                   <div 
+                                     className={`h-full transition-all duration-500 ${spotsLeft <= 2 ? 'bg-red-500' : 'bg-[#f97316]'}`} 
+                                     style={{ width: `${progress}%` }} 
+                                   />
+                                </div>
+                             </div>
+                             
+                             <div className="flex gap-2">
+                                <Button 
+                                  disabled={spotsLeft === 0 || isAlreadyBooked}
+                                  onClick={() => {
+                                    setSelectedSession(session);
+                                    setIsBookingModalOpen(true);
+                                  }}
+                                  className={`flex-1 h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg transition-all ${isAlreadyBooked ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-[#f97316] hover:bg-[#ea580c] text-white'}`}
+                                >
+                                   {isAlreadyBooked ? 'BOOKED ✅' : spotsLeft === 0 ? 'FULL' : 'BOOK NOW'}
+                                </Button>
+                                {isAlreadyBooked && (
+                                  <Button 
+                                    variant="outline"
+                                    onClick={() => handleCancelBooking(session.id)}
+                                    className="h-12 w-12 rounded-xl border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                )}
+                             </div>
+                          </div>
+                       </div>
+                     );
+                   })
                ) : (
                  <div className="col-span-full py-20 text-center bg-[#1A1D24] border border-dashed border-border/50 rounded-3xl">
                     <Calendar className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-                    <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">No sessions found for this week.</p>
+                     <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">No matching sessions this week.</p>
+                     <div className="flex flex-col items-center gap-3 mt-6">
+                        {selectedStyleId && (
+                          <Button 
+                            variant="link" 
+                            onClick={() => setSelectedStyleId(null)}
+                            className="text-[#f97316] text-[10px] font-black uppercase"
+                          >
+                            Show all session styles
+                          </Button>
+                        )}
+                        <Button 
+                          variant="outline"
+                          onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))}
+                          className="border-[#f97316]/20 text-[#f97316] text-[10px] font-black uppercase tracking-widest h-10 px-6 rounded-xl hover:bg-[#f97316]/10"
+                        >
+                           Try Next Week <ChevronRight className="w-3.5 h-3.5 ml-2" />
+                        </Button>
+                     </div>
                  </div>
                )}
             </div>
@@ -332,13 +430,15 @@ export default function WeeklySchedule() {
                        </div>
                      ))}
                   </div>
-                  
-                  <div className="grid grid-cols-7 gap-4">
-                     {days.map(day => (
-                       <div key={day.toString()} className="space-y-3 min-h-[400px] border-r border-white/5 last:border-0 pr-4">
-                          {sessions
-                            .filter(s => isSameDay(parseISO(s.start_time), day))
-                            .map(session => {
+                                   <div className="grid grid-cols-7 gap-4">
+                     {days.map(day => {
+                       const daySessions = sessions
+                         .filter(s => isSameDay(parseISO(s.start_time), day))
+                         .filter(s => !selectedStyleId || s.session_type_id === selectedStyleId);
+
+                       return (
+                         <div key={day.toString()} className="space-y-3 min-h-[400px] border-r border-white/5 last:border-0 pr-4">
+                            {daySessions.map(session => {
                               const isAlreadyBooked = myBookings.includes(session.id);
                               return (
                                 <div 
@@ -357,10 +457,15 @@ export default function WeeklySchedule() {
                                    <p className="text-[9px] text-gray-500 mt-1 uppercase font-bold">{Math.max(0, session.capacity - (session.bookings?.[0]?.count || 0))} slots left</p>
                                 </div>
                               );
-                            })
-                          }
-                       </div>
-                     ))}
+                            })}
+                            {daySessions.length === 0 && (
+                               <div className="h-full flex items-center justify-center opacity-10">
+                                  <div className="w-px h-full bg-white/5" />
+                               </div>
+                            )}
+                         </div>
+                       );
+                     })}
                   </div>
                </div>
             </div>
@@ -368,53 +473,94 @@ export default function WeeklySchedule() {
         </div>
       )}
 
-      {/* Booking Modal */}
-      <Dialog open={isBookingModalOpen} onOpenChange={setIsBookingModalOpen}>
-        <DialogContent className="bg-[#1A1D24] border border-border/50 text-white sm:max-w-[400px] rounded-[32px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Confirm Booking</DialogTitle>
-          </DialogHeader>
-          
-          {selectedSession && (
-            <div className="space-y-6 pt-4">
-               <div className="p-6 rounded-[24px] bg-black/20 border border-white/5 space-y-4">
-                  <div className="flex flex-col gap-1">
-                     <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Selected Style</span>
-                     <span className="text-lg text-white font-black">{selectedSession.title}</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 pt-2">
-                    <div className="flex flex-col gap-1">
-                       <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Date</span>
-                       <span className="text-xs text-white font-bold">{safeFormat(selectedSession.start_time, 'EEEE, MMM d')}</span>
+      {/* Booking Side Slider (Sheet) */}
+      <Sheet open={isBookingModalOpen} onOpenChange={setIsBookingModalOpen}>
+        <SheetContent className="bg-[#111317] border-l border-white/5 text-white sm:max-w-[450px] p-0 flex flex-col h-full shadow-2xl">
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 overflow-y-auto px-6 py-12 md:px-10">
+              <SheetHeader className="mb-10 text-left">
+              <div className="w-12 h-12 bg-[#f97316]/10 rounded-2xl flex items-center justify-center mb-6 border border-[#f97316]/20">
+                 <Zap className="w-6 h-6 text-[#f97316]" />
+              </div>
+              <SheetTitle className="text-3xl font-black uppercase tracking-tighter leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                Confirm Your<br />Session
+              </SheetTitle>
+              <SheetDescription className="text-gray-500 text-xs font-medium italic mt-2">
+                Ready to level up? Review the details below to secure your spot.
+              </SheetDescription>
+            </SheetHeader>
+            
+            {selectedSession && (
+              <div className="flex-1 space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                 <div className="p-8 rounded-[32px] bg-[#1A1D24] border border-white/5 space-y-8 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8">
+                       <div className="w-10 h-10 rounded-xl bg-black/40 border border-white/5 flex items-center justify-center text-sm font-black text-[#f97316]">
+                          {selectedSession.title?.charAt(0)}
+                       </div>
                     </div>
-                    <div className="flex flex-col gap-1">
-                       <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Time</span>
-                       <span className="text-xs text-white font-bold">{safeFormat(selectedSession.start_time, 'HH:mm')}</span>
+
+                    <div className="space-y-1">
+                       <h4 className="text-xl font-black text-white uppercase tracking-tight">{selectedSession.title}</h4>
+                       <p className="text-[10px] text-[#f97316] font-black uppercase tracking-widest">{selectedSession.session_types?.name}</p>
                     </div>
-                  </div>
+                    
+                    <div className="grid grid-cols-2 gap-8">
+                      <div className="space-y-1">
+                         <span className="flex items-center gap-2 text-[9px] text-gray-500 uppercase font-black tracking-widest">
+                            <Calendar className="w-3 h-3 text-[#f97316]" /> Date
+                         </span>
+                         <span className="text-sm text-white font-bold">{safeFormat(selectedSession.start_time, 'MMM d, yyyy')}</span>
+                      </div>
+                      <div className="space-y-1">
+                         <span className="flex items-center gap-2 text-[9px] text-gray-500 uppercase font-black tracking-widest">
+                            <Clock className="w-3 h-3 text-[#f97316]" /> Time
+                         </span>
+                         <span className="text-sm text-white font-bold">{safeFormat(selectedSession.start_time, 'HH:mm')}</span>
+                      </div>
+                    </div>
 
-                  <div className="flex justify-between items-center pt-4 border-t border-white/5">
-                     <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Total Investment</span>
-                     <span className="text-xl font-black text-[#f97316]">£{selectedSession.price || selectedSession.session_types?.base_price}</span>
-                  </div>
-               </div>
+                    <div className="pt-6 border-t border-white/5 flex items-center gap-3">
+                       <MapPin className="w-4 h-4 text-[#f97316]" />
+                       <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Main Training Ground, Ground Floor</span>
+                    </div>
+                 </div>
 
-               <div className="bg-[#f97316]/5 border border-[#f97316]/20 p-4 rounded-2xl flex items-start gap-3">
-                  <Bell className="w-4 h-4 text-[#f97316] mt-0.5" />
-                  <p className="text-[10px] text-gray-400 leading-relaxed font-medium">
-                     By confirming, you agree to our 24-hour cancellation policy. Payment is handled in-person at the studio.
-                  </p>
-               </div>
+                 <div className="p-8 rounded-[32px] bg-black/20 border border-dashed border-white/5 flex justify-between items-center group hover:border-[#f97316]/30 transition-all">
+                    <div className="space-y-1">
+                       <span className="text-[9px] text-gray-500 uppercase font-black tracking-[0.2em]">Total Investment</span>
+                       <p className="text-xs text-gray-400 font-medium italic">Pay in-person at arrival</p>
+                    </div>
+                    <span className="text-3xl font-black text-white tracking-tighter">£{selectedSession.price || selectedSession.session_types?.base_price}</span>
+                 </div>
+
+                 <div className="bg-[#f97316]/5 border border-[#f97316]/10 p-5 rounded-2xl flex items-start gap-3">
+                    <Info className="w-4 h-4 text-[#f97316] mt-0.5" />
+                    <p className="text-[10px] text-gray-500 leading-relaxed font-medium">
+                       By confirming, you agree to our 24-hour cancellation policy. Sessions cancelled within 24 hours may still be charged.
+                    </p>
+                 </div>
+              </div>
+            )}
+
             </div>
-          )}
-
-          <DialogFooter className="pt-6 sm:justify-between sm:space-x-4">
-            <Button variant="ghost" onClick={() => setIsBookingModalOpen(false)} className="text-gray-500 hover:text-white hover:bg-white/5 text-[10px] font-bold uppercase tracking-widest h-12 px-6 rounded-xl order-2 sm:order-1">Back to Schedule</Button>
-            <Button onClick={handleBook} className="bg-[#f97316] hover:bg-[#ea580c] text-white text-[10px] font-black uppercase tracking-widest h-12 px-8 rounded-xl shadow-lg shadow-[#f97316]/20 order-1 sm:order-2">Confirm Booking</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            
+            <div className="shrink-0 p-6 md:p-10 bg-[#111317]/80 backdrop-blur-md border-t border-white/5 space-y-4">
+              <Button 
+                onClick={handleBook} 
+                className="w-full h-16 bg-[#f97316] hover:bg-[#ea580c] text-white text-[12px] font-black uppercase tracking-[0.3em] rounded-2xl shadow-2xl shadow-[#f97316]/20 flex items-center justify-center gap-2 transform active:scale-95 transition-all"
+              >
+                <CheckCircle2 className="w-5 h-5" /> Confirm Booking
+              </Button>
+              <button 
+                onClick={() => setIsBookingModalOpen(false)} 
+                className="w-full py-2 text-gray-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-all"
+              >
+                Back to Schedule
+              </button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

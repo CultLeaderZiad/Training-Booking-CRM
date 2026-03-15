@@ -14,7 +14,7 @@ import {
   Dumbbell
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
-import { format, isValid } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 
 export default function UserDashboard() {
   const { user } = useAuth();
@@ -46,7 +46,10 @@ export default function UserDashboard() {
 
       if (bookingsError) throw bookingsError;
 
-      const confirmed = (bookingsData || []).filter(b => b.status === 'confirmed' || b.status === 'completed');
+      // Filter out bookings where the related session data is null
+      const validBookings = (bookingsData || []).filter(b => b.sessions !== null);
+
+      const confirmed = validBookings.filter(b => b.status === 'confirmed' || b.status === 'completed');
       const now = new Date();
       
       const completed = confirmed.filter(b => {
@@ -55,7 +58,7 @@ export default function UserDashboard() {
         return endTime && isValid(endTime) && endTime < now;
       }).length;
 
-      const active = (bookingsData || []).filter(b => b.status === 'confirmed' || b.status === 'pending').length;
+      const active = validBookings.filter(b => b.status === 'confirmed' || b.status === 'pending').length;
 
       setStats({
         completedSessions: completed,
@@ -64,7 +67,7 @@ export default function UserDashboard() {
 
       // Fetch only upcoming confirmed sessions for the schedule preview
       const upcoming = (bookingsData || [])
-        .filter(b => (b.status === 'confirmed' || b.status === 'pending') && (!b.sessions?.start_time || new Date(b.sessions.start_time) > now))
+        .filter(b => b.sessions && (b.status === 'confirmed' || b.status === 'pending') && (new Date(b.sessions.start_time) > now))
         .slice(0, 3);
       
       setUpcomingSessions(upcoming);
@@ -74,6 +77,12 @@ export default function UserDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const safeFormat = (dateStr: string, formatStr: string) => {
+    if (!dateStr) return '---';
+    const d = parseISO(dateStr);
+    return isValid(d) ? format(d, formatStr) : '---';
   };
 
   const getTimeOfDayGreeting = () => {
@@ -92,25 +101,21 @@ export default function UserDashboard() {
          
          <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div className="max-w-2xl space-y-4">
-               <h1 className="text-5xl md:text-6xl font-black tracking-tight text-white leading-[0.9]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                 {getTimeOfDayGreeting()}, <br/>
-                 <span className="text-[#f97316] uppercase">{user?.user_metadata?.full_name?.split(' ')[0] || 'Member'}</span>
-               </h1>
-               
-               {upcomingSessions.length > 0 && (
-                 <div className="flex items-center gap-3 bg-white/5 border border-white/10 w-fit px-4 py-2 rounded-2xl backdrop-blur-md">
-                    <Calendar className="w-4 h-4 text-[#f97316]" />
-                    <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">
-                       Next: {format(new Date(upcomingSessions[0].sessions.start_time), 'EEEE, MMM d @ HH:mm')}
-                    </span>
-                 </div>
-               )}
+                <div className="space-y-1">
+                   <h1 className="text-5xl md:text-6xl font-black tracking-tight text-white leading-[0.9]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                     {getTimeOfDayGreeting()}, <br/>
+                     <span className="text-[#f97316] uppercase">{user?.user_metadata?.full_name?.split(' ')[0] || 'Member'}</span>
+                   </h1>
+                   {upcomingSessions.length > 0 && upcomingSessions[0].sessions && (
+                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">Next Training: <span className="text-white">{safeFormat(upcomingSessions[0].sessions.start_time, 'EEEE, MMM d @ HH:mm')}</span></p>
+                   )}
+                </div>
 
-               <p className="text-gray-500 text-lg font-medium">
-                 {stats.activeBookings > 0 
-                   ? `You have ${stats.activeBookings} active bookings. Keep up the great work!` 
-                   : "No sessions booked yet? Let's get you back on track today."}
-               </p>
+                <p className="text-gray-500 text-lg font-medium pt-4">
+                  {stats.activeBookings > 0 
+                    ? `You have ${stats.activeBookings} active bookings. Keep up the great work!` 
+                    : "No sessions booked yet? Let's get you back on track today."}
+                </p>
             </div>
 
             <Button 
