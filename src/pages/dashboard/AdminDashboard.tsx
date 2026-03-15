@@ -59,8 +59,10 @@ export default function AdminDashboard() {
   
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [scheduledSessions, setScheduledSessions] = useState<any[]>([]);
   const [adminHistory, setAdminHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [revenueMode, setRevenueMode] = useState<'bookings' | 'sessions'>('bookings');
 
   useEffect(() => {
     fetchData();
@@ -84,6 +86,9 @@ export default function AdminDashboard() {
             session_types (
               name,
               base_price
+            ),
+            sessions (
+              price
             )
           `)
           .order('created_at', { ascending: false })
@@ -101,7 +106,8 @@ export default function AdminDashboard() {
           } catch (e) {
             return { data: [] };
           }
-        })()
+        })(),
+        supabase.from('sessions').select('*, session_types(base_price)')
       ]);
 
       if (bookingsRes.error) throw bookingsRes.error;
@@ -110,6 +116,8 @@ export default function AdminDashboard() {
       setBookings(bookingsRes.data as any || []);
       setProfiles(profilesRes.data as any || []);
       setAdminHistory(historyRes?.data || []);
+      const schedCount = sessionsRes?.data || [];
+      setScheduledSessions(schedCount);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -149,14 +157,23 @@ export default function AdminDashboard() {
 
     // Calculate metrics based on the filtered set or overall? 
     // Usually metrics are based on the date range.
-    const revenue = bookingsInDateRange
-      .filter(b => b.status === 'completed' || b.status === 'confirmed')
-      .reduce((sum, b) => sum + (b.session_types?.base_price || 0), 0);
+    let revenue = 0;
+    if (revenueMode === 'bookings') {
+      revenue = bookingsInDateRange
+        .filter(b => b.status === 'completed' || b.status === 'confirmed')
+        .reduce((sum, b) => sum + (b.sessions?.price || b.session_types?.base_price || 0), 0);
+    } else {
+      // Sessions Pricing: Potential revenue from scheduled sessions in the date range
+      revenue = scheduledSessions.filter(s => {
+        const sDate = new Date(s.start_time);
+        return isWithinInterval(sDate, { start: startDate, end: endDate });
+      }).reduce((sum, s) => sum + (s.price || s.session_types?.base_price || 0), 0);
+    }
 
     const pending = bookingsInDateRange.filter(b => b.status === 'pending').length;
     
     // Active sessions might be ones scheduled in the future
-    const active = bookings.filter(b => b.status === 'confirmed' && new Date(b.booking_datetime) >= now).length;
+    const active = scheduledSessions.filter(s => new Date(s.start_time) >= now).length;
 
     const clientsInDateRange = profiles.filter(p => {
       if (!p.created_at || p.role !== 'client') return false;
@@ -170,7 +187,7 @@ export default function AdminDashboard() {
       activeSessions: active,
       pendingRequests: pending
     };
-  }, [dateRange, bookings, profiles]);
+  }, [dateRange, bookings, profiles, scheduledSessions, revenueMode]);
 
   const recentActivities = useMemo(() => {
     const activities: Activity[] = [];
@@ -281,17 +298,33 @@ export default function AdminDashboard() {
         
         <div className="p-5 rounded-xl border border-border/50 bg-[#1A1D24] shadow-lg relative overflow-hidden group">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-              Total Revenue
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="w-3.5 h-3.5 text-gray-500 cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="bg-[#111317] border-border/50 text-gray-300">
-                  <p>Sum of completed & confirmed session base prices</p>
-                </TooltipContent>
-              </Tooltip>
-            </h3>
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                {revenueMode === 'bookings' ? "Bookings Revenue" : "Sessions Pricing"}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-3.5 h-3.5 text-gray-500 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-[#111317] border-border/50 text-gray-300">
+                    <p>{revenueMode === 'bookings' ? "Sum of confirmed bookings" : "Sum of scheduled session prices"}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </h3>
+              <div className="flex items-center gap-1 mt-1">
+                <button 
+                  onClick={() => setRevenueMode('bookings')}
+                  className={`text-[10px] px-1.5 py-0.5 rounded ${revenueMode === 'bookings' ? 'bg-[#f97316] text-white' : 'bg-white/5 text-gray-500'}`}
+                >
+                  Bookings
+                </button>
+                <button 
+                  onClick={() => setRevenueMode('sessions')}
+                  className={`text-[10px] px-1.5 py-0.5 rounded ${revenueMode === 'sessions' ? 'bg-[#f97316] text-white' : 'bg-white/5 text-gray-500'}`}
+                >
+                  Sessions
+                </button>
+              </div>
+            </div>
             <span className="p-2 bg-green-500/10 rounded-lg text-green-500">
               <TrendingUp className="w-4 h-4" />
             </span>

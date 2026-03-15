@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -15,13 +16,15 @@ type SortField = 'client' | 'session' | 'date' | 'price' | 'status';
 type SortDirection = 'asc' | 'desc';
 
 export default function Bookings() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters State
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [sessionFilter, setSessionFilter] = useState<string>('all');
+  const [sessionFilter, setSessionFilter] = useState<string>(searchParams.get('session') || 'all');
+  const [scheduledSessionFilter, setScheduledSessionFilter] = useState<string>(searchParams.get('session') || 'all');
   // Date filter types: 'all', 'today', 'week', 'month', 'custom'
   const [dateFilterType, setDateFilterType] = useState<string>('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
@@ -60,7 +63,8 @@ export default function Bookings() {
             duration,
             base_price,
             location
-          )
+          ),
+          scheduled_session_id
         `);
 
       if (error) throw error;
@@ -107,8 +111,11 @@ export default function Bookings() {
       // Status Filter
       if (statusFilter !== 'all' && b.status.toLowerCase() !== statusFilter) return false;
       
-      // Session Filter
+      // Session Filter (Template level)
       if (sessionFilter !== 'all' && b.session_types?.id !== sessionFilter) return false;
+
+      // Scheduled Session Filter (Instance level)
+      if (scheduledSessionFilter !== 'all' && b.scheduled_session_id !== scheduledSessionFilter) return false;
 
       // Date Filter
       if (dateFilterType !== 'all') {
@@ -160,7 +167,7 @@ export default function Bookings() {
     });
 
     return filtered;
-  }, [bookings, searchQuery, statusFilter, sessionFilter, dateFilterType, dateRange, sortField, sortDirection]);
+  }, [bookings, searchQuery, statusFilter, sessionFilter, scheduledSessionFilter, dateFilterType, dateRange, sortField, sortDirection]);
 
   const handleStatusChange = async (newStatus: string) => {
     if (!selectedBooking) return;
@@ -238,6 +245,17 @@ export default function Bookings() {
 
            {/* Filter Controls */}
            <div className="flex flex-wrap items-center gap-3 pt-2">
+              {scheduledSessionFilter !== 'all' && (
+                <Badge 
+                  className="bg-[#f97316] text-white flex gap-2 items-center cursor-pointer"
+                  onClick={() => {
+                    setScheduledSessionFilter('all');
+                    setSearchParams({});
+                  }}
+                >
+                  Filtered by Session Match <XCircle className="w-3 h-3" />
+                </Badge>
+              )}
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[140px] bg-[#111317] border-border/50 text-gray-300 h-9 rounded-lg">
                   <SelectValue placeholder="All Statuses" />

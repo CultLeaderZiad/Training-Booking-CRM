@@ -67,8 +67,30 @@ export default function AdminLayout() {
       )
       .subscribe();
 
+    // 3. Set up listener for NEW profiles (sign ups)
+    const profilesSub = supabase
+      .channel('admin-profiles-listener')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'profiles' },
+        (payload) => {
+          toast.success('New Client Joined!');
+          const newNotif = {
+            id: payload.new.id || Math.random(),
+            title: 'New Client Sign-up',
+            message: `${payload.new.first_name || 'A new user'} just joined the platform.`,
+            created_at: payload.new.created_at || new Date().toISOString(),
+            is_read: false
+          };
+          setNotifications((prev) => [newNotif, ...prev]);
+          setUnreadCount((prev) => prev + 1);
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(bookingsSub);
+      supabase.removeChannel(profilesSub);
     };
   }, []);
 

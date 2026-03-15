@@ -34,7 +34,7 @@ export default function Login() {
         .single();
         
       if (profile?.role === 'admin') {
-        navigate('/admin/dashboard');
+        navigate('/admin');
       } else {
         navigate('/dashboard');
       }

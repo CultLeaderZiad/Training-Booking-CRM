@@ -11,13 +11,18 @@ import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
 import AccessDenied from "./pages/auth/AccessDenied";
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
-import UserDashboard from "./pages/dashboard/UserDashboard";
 import AdminLayout from "./components/AdminLayout";
+import UserLayout from "./components/UserLayout";
+import UserDashboard from "./pages/dashboard/UserDashboard";
 import Sessions from "./pages/dashboard/admin/Sessions";
 import Clients from "./pages/dashboard/admin/Clients";
 import Bookings from "./pages/dashboard/admin/Bookings";
 import Profile from "./pages/dashboard/Profile";
 import ProtectedRoute from "./components/ProtectedRoute";
+import WeeklySchedule from "./pages/dashboard/WeeklySchedule";
+import MyBookings from "./pages/dashboard/MyBookings";
+import Notifications from "./pages/dashboard/Notifications";
+import ProfileSettings from "./pages/dashboard/ProfileSettings";
 
 const queryClient = new QueryClient();
 
@@ -44,7 +49,13 @@ const App = () => (
             </Route>
 
             <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard/*" element={<UserDashboard />} />
+              <Route path="/dashboard" element={<UserLayout />}>
+                <Route index element={<UserDashboard />} />
+                <Route path="bookings" element={<WeeklySchedule />} />
+                <Route path="my-bookings" element={<MyBookings />} />
+                <Route path="notifications" element={<Notifications />} />
+                <Route path="profile-settings" element={<ProfileSettings />} />
+              </Route>
               <Route path="/profile" element={<Profile />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
