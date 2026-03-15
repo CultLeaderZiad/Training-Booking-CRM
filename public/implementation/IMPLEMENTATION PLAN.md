@@ -149,11 +149,20 @@ Based on the current project setup:
     *   [x] Build comprehensive User Profiles page (Avatar upload, personal details, address details).
     *   [x] Implement route protection guards (Admin vs Client vs User).
     *   [x] Build mockups for Admin and User Dashboards.
-4.  **Admin Features Development**:
-    *   [ ] Implement Sessions CRUD.
-    *   [ ] Implement Availability Calendar logic via JSON builder.
-    *   [ ] Implement Client Management (Roles/Deletion).
-    *   [ ] Implement Booking Management.
+4.  **Phase 2: Admin Dashboard & Content Management**:
+    *   *Admin Core Infrastructure*
+        *   [x] Implement `AdminLayout` with Collapsible Sidebar (Sessions, Clients, Bookings).
+        *   [x] Shared Admin Header with profile dropdown, Breadcrumbs, and Notification Center.
+        *   [x] Contextual Quick Actions system for common admin tasks.
+    *   *Data Management & CRUD*
+        *   [x] CRUD for `categories` and `session_types` (Integrated into Sessions management).
+        *   [ ] CRUD for `sessions` including recurring logic and image support.
+        *   [ ] CRUD for `clients` and `bookings` (Master lists with filtering).
+    *   *Analytics & Features*
+        *   [x] Summary Dashboard with Summary Cards, Trend Indicators, and Date Range Filter.
+        *   [x] Real-time notification logic (Supabase Realtime for new bookings).
+    *   *Security*
+        *   [ ] Refine RLS policies for `admin` role write permissions.
 5.  **Client Features Development**:
     *   [ ] Implement Session discovery/booking flow.
     *   [ ] Implement Client Dashboard & Booking management.

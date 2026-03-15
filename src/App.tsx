@@ -12,6 +12,10 @@ import Signup from "./pages/auth/Signup";
 import AccessDenied from "./pages/auth/AccessDenied";
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import UserDashboard from "./pages/dashboard/UserDashboard";
+import AdminLayout from "./components/AdminLayout";
+import Sessions from "./pages/dashboard/admin/Sessions";
+import Clients from "./pages/dashboard/admin/Clients";
+import Bookings from "./pages/dashboard/admin/Bookings";
 import Profile from "./pages/dashboard/Profile";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -31,7 +35,12 @@ const App = () => (
             <Route path="/access-denied" element={<AccessDenied />} />
             
             <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-              <Route path="/admin/*" element={<AdminDashboard />} />
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="sessions" element={<Sessions />} />
+                <Route path="clients" element={<Clients />} />
+                <Route path="bookings" element={<Bookings />} />
+              </Route>
             </Route>
 
             <Route element={<ProtectedRoute />}>
