@@ -156,10 +156,14 @@ Based on the current project setup:
         *   [x] Contextual Quick Actions system for common admin tasks.
     *   *Data Management & CRUD*
         *   [x] CRUD for `categories` and `session_types` (Integrated into Sessions management).
+        *   [x] View Modals with inline actions (Activate, Deactivate, Edit, Delete) for Sessions and Categories.
+        *   [x] View Modals with inline Manage Status for Bookings (Confirm, Pending, Cancel).
         *   [ ] CRUD for `sessions` including recurring logic and image support.
-        *   [ ] CRUD for `clients` and `bookings` (Master lists with filtering).
+        *   [x] CRUD for `clients` and `bookings` (Master lists with filtering).
     *   *Analytics & Features*
         *   [x] Summary Dashboard with Summary Cards, Trend Indicators, and Date Range Filter.
+        *   [x] Tooltips on Metric Cards for clear definitions.
+        *   [x] Unified Recent Activity stream (User Actions + Admin Actions) with filtering.
         *   [x] Real-time notification logic (Supabase Realtime for new bookings).
     *   *Security*
         *   [ ] Refine RLS policies for `admin` role write permissions.

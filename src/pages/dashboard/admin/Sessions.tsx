@@ -6,10 +6,17 @@ import { toast } from 'sonner';
 import { 
   Plus, 
   Search, 
-  MoreHorizontal, 
   Edit, 
   Trash2,
-  FolderOpen
+  FolderOpen,
+  Eye,
+  Calendar,
+  Clock,
+  Users,
+  CheckCircle2,
+  XCircle,
+  Dumbbell,
+  MoreHorizontal
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
@@ -31,8 +38,12 @@ export default function Sessions() {
   const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isViewCategoryModalOpen, setIsViewCategoryModalOpen] = useState(false);
   
   // Holds data for the Currently Editing entities
+  const [viewingSession, setViewingSession] = useState<any>(null);
+  const [viewingCategory, setViewingCategory] = useState<any>(null);
   const [editingSession, setEditingSession] = useState<any>(null);
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [deletingEntity, setDeletingEntity] = useState<{type: 'session' | 'category', data: any} | null>(null);
@@ -77,7 +88,13 @@ export default function Sessions() {
   };
 
   // --- Session Modal Logic ---
+  const openViewModal = (session: any) => {
+    setViewingSession(session);
+    setIsViewModalOpen(true);
+  };
+
   const openSessionModal = (session: any = null) => {
+    setIsViewModalOpen(false); // Close view modal if open
     if (session) {
       setEditingSession(session);
       setSessionFormData({
@@ -92,6 +109,24 @@ export default function Sessions() {
       setSessionFormData({ name: '', category_id: categories[0]?.id || '', price: '', duration: '', slots: '' });
     }
     setIsSessionModalOpen(true);
+  };
+
+  const handleToggleActive = async () => {
+    if (!viewingSession) return;
+    const newStatus = !viewingSession.is_active;
+
+    try {
+      const { error } = await supabase.from('session_types').update({ is_active: newStatus }).eq('id', viewingSession.id);
+      if (error) throw error;
+      
+      toast.success(`Session ${newStatus ? 'activated' : 'deactivated'} successfully`);
+      
+      // update local
+      setViewingSession({ ...viewingSession, is_active: newStatus });
+      setSessions(prev => prev.map(s => s.id === viewingSession.id ? { ...s, is_active: newStatus } : s));
+    } catch (e: any) {
+      toast.error('Failed to change status: ' + e.message);
+    }
   };
 
   const handleSaveSession = async () => {
@@ -127,7 +162,13 @@ export default function Sessions() {
   };
 
   // --- Category Modal Logic ---
+  const openViewCategoryModal = (category: any) => {
+    setViewingCategory(category);
+    setIsViewCategoryModalOpen(true);
+  };
+
   const openCategoryModal = (category: any = null) => {
+    setIsViewCategoryModalOpen(false);
     if (category) {
       setEditingCategory(category);
       setCategoryFormData({ name: category.name, description: category.description || '' });
@@ -163,6 +204,8 @@ export default function Sessions() {
 
   // --- Delete Logic ---
   const openDeleteModal = (type: 'session' | 'category', data: any) => {
+    setIsViewModalOpen(false);
+    setIsViewCategoryModalOpen(false);
     setDeletingEntity({ type, data });
     setIsDeleteModalOpen(true);
   };
@@ -253,7 +296,11 @@ export default function Sessions() {
               </TableHeader>
               <TableBody>
                 {sessions.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase())).map((type) => (
-                  <TableRow key={type.id} className="border-border/50 hover:bg-white/5 transition-colors">
+                  <TableRow 
+                    key={type.id} 
+                    className="border-border/50 hover:bg-white/5 transition-colors cursor-pointer group"
+                    onClick={() => openViewModal(type)}
+                  >
                     <TableCell className="font-medium text-white">{type.name}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="bg-white/5 text-gray-300 border-border/50">
@@ -262,30 +309,23 @@ export default function Sessions() {
                     </TableCell>
                     <TableCell className="text-gray-300">£{type.base_price}</TableCell>
                     <TableCell className="text-gray-300">{type.duration} mins</TableCell>
-                    <TableCell className="text-gray-300">{type.max_slots} people</TableCell>
+                    <TableCell className="text-gray-300">{type.max_slots} slots</TableCell>
                     <TableCell>
                       {type.is_active ? (
-                        <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 shadow-none border-0">Active</Badge>
+                        <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 shadow-none border border-green-500/20">Active</Badge>
                       ) : (
-                        <Badge className="bg-gray-500/10 text-gray-400 hover:bg-gray-500/20 shadow-none border-0">Draft</Badge>
+                        <Badge className="bg-gray-500/10 text-gray-400 hover:bg-gray-500/20 shadow-none border border-gray-500/20">Draft</Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-[#1A1D24] border-border/50">
-                          <DropdownMenuItem onClick={() => openSessionModal(type)} className="text-gray-300 hover:text-white cursor-pointer focus:bg-white/5">
-                            <Edit className="mr-2 h-4 w-4" /> Edit Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openDeleteModal('session', type)} className="text-red-500 hover:text-red-400 cursor-pointer focus:bg-red-500/10 focus:text-red-500 mt-1">
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete Session
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                       <Button 
+                         variant="ghost" 
+                         size="icon" 
+                         className="w-8 h-8 rounded-full text-gray-500 hover:text-[#f97316] hover:bg-[#f97316]/10 transition-all"
+                         onClick={(e) => { e.stopPropagation(); openViewModal(type); }}
+                       >
+                          <Eye className="w-4 h-4" />
+                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -316,7 +356,11 @@ export default function Sessions() {
               </TableHeader>
               <TableBody>
                 {categories.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase())).map((category) => (
-                  <TableRow key={category.id} className="border-border/50 hover:bg-white/5 transition-colors">
+                  <TableRow 
+                    key={category.id} 
+                    className="border-border/50 hover:bg-white/5 transition-colors cursor-pointer group"
+                    onClick={() => openViewCategoryModal(category)}
+                  >
                     <TableCell className="font-medium text-white">{category.name}</TableCell>
                     <TableCell className="text-gray-400 text-sm truncate max-w-xs">{category.description}</TableCell>
                     <TableCell className="text-gray-300">
@@ -325,21 +369,14 @@ export default function Sessions() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-[#1A1D24] border-border/50">
-                          <DropdownMenuItem onClick={() => openCategoryModal(category)} className="text-gray-300 hover:text-white cursor-pointer focus:bg-white/5">
-                            <Edit className="mr-2 h-4 w-4" /> Edit Category
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openDeleteModal('category', category)} className="text-red-500 hover:text-red-400 cursor-pointer focus:bg-red-500/10 focus:text-red-500 mt-1">
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete Category
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                       <Button 
+                         variant="ghost" 
+                         size="icon" 
+                         className="w-8 h-8 rounded-full text-gray-500 hover:text-[#f97316] hover:bg-[#f97316]/10 transition-all"
+                         onClick={(e) => { e.stopPropagation(); openViewCategoryModal(category); }}
+                       >
+                          <Eye className="w-4 h-4" />
+                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -355,6 +392,146 @@ export default function Sessions() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* --- VIEW SESSION MODAL --- */}
+      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+        <DialogContent className="bg-[#1A1D24] border-border/50 text-white sm:max-w-[450px]">
+          {viewingSession && (
+            <>
+              <DialogHeader className="mb-4">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="bg-[#f97316]/10 text-[#f97316] border-[#f97316]/20 font-medium">Session Type</Badge>
+                </div>
+                <DialogTitle className="text-2xl font-black mt-2 tracking-tight uppercase" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {viewingSession.name}
+                </DialogTitle>
+                <DialogDescription className="text-gray-400">
+                  Manage details and configuration for this session type.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                 <div className="grid grid-cols-2 gap-3">
+                   {/* Info Cards */}
+                   <div className="p-4 rounded-xl border border-border/50 bg-[#111317]">
+                     <div className="flex items-center gap-2 text-gray-400 mb-1">
+                       <Clock className="w-4 h-4" />
+                       <span className="text-xs font-semibold uppercase tracking-wider">Duration</span>
+                     </div>
+                     <p className="text-lg font-bold text-white">{viewingSession.duration} mins</p>
+                   </div>
+                   <div className="p-4 rounded-xl border border-border/50 bg-[#111317]">
+                     <div className="flex items-center gap-2 text-gray-400 mb-1">
+                       <Dumbbell className="w-4 h-4" />
+                       <span className="text-xs font-semibold uppercase tracking-wider">Price</span>
+                     </div>
+                     <p className="text-lg font-bold text-[#f97316]">£{viewingSession.base_price}</p>
+                   </div>
+                 </div>
+
+                 {/* Capacity Utilization */}
+                 <div className="p-4 rounded-xl border border-border/50 bg-[#111317] flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-gray-400 mb-1">
+                       <Users className="w-4 h-4" />
+                       <span className="text-xs font-semibold uppercase tracking-wider">Capacity Limits</span>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <span className="text-xl font-bold text-white">Up to {viewingSession.max_slots}</span>
+                      <span className="text-sm text-gray-500 mb-0.5">people per slot</span>
+                    </div>
+                 </div>
+
+                 {/* Current Status */}
+                 <div className="p-4 rounded-xl border border-border/50 bg-[#111317] flex items-center justify-between">
+                    <div>
+                      <span className="text-xs text-gray-400 uppercase font-semibold tracking-wider block mb-1">Current Status</span>
+                      <div className="flex items-center gap-2 mt-1">
+                         {viewingSession.is_active ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <XCircle className="w-5 h-5 text-gray-500" />}
+                         <span className="text-white font-bold">{viewingSession.is_active ? 'Active' : 'Draft / Off'}</span>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleToggleActive}
+                      className={viewingSession.is_active 
+                        ? 'border-red-500/20 text-red-500 hover:bg-red-500/10 hover:text-red-400'
+                        : 'border-green-500/20 text-green-500 hover:bg-green-500/10 hover:text-green-400'
+                      }
+                    >
+                      {viewingSession.is_active ? 'Deactivate' : 'Activate'}
+                    </Button>
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-6 pt-4 border-t border-border/50">
+                 <Button 
+                   className="bg-[#f97316] hover:bg-[#ea580c] text-white"
+                   onClick={() => openSessionModal(viewingSession)}
+                 >
+                   <Edit className="w-4 h-4 mr-2" /> Edit Session
+                 </Button>
+                 <Button 
+                   variant="destructive"
+                   className="bg-red-500 hover:bg-red-600 text-white"
+                   onClick={() => openDeleteModal('session', viewingSession)}
+                 >
+                   <Trash2 className="w-4 h-4 mr-2" /> Delete
+                 </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* --- VIEW CATEGORY MODAL --- */}
+      <Dialog open={isViewCategoryModalOpen} onOpenChange={setIsViewCategoryModalOpen}>
+        <DialogContent className="bg-[#1A1D24] border-border/50 text-white sm:max-w-[450px]">
+          {viewingCategory && (
+            <>
+              <DialogHeader className="mb-4">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="bg-[#f97316]/10 text-[#f97316] border-[#f97316]/20 font-medium">Category</Badge>
+                </div>
+                <DialogTitle className="text-2xl font-black mt-2 tracking-tight uppercase" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {viewingCategory.name}
+                </DialogTitle>
+                <DialogDescription className="text-gray-400">
+                  Manage details for this session category.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                 <div className="p-4 rounded-xl border border-border/50 bg-[#111317]">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 block mb-1">Description</span>
+                    <p className="text-sm text-gray-200">{viewingCategory.description || 'No description provided.'}</p>
+                 </div>
+                 <div className="p-4 rounded-xl border border-border/50 bg-[#111317]">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 block mb-1">Associated Sessions</span>
+                    <Badge variant="secondary" className="bg-[#f97316]/10 text-[#f97316] hover:bg-[#f97316]/20 shadow-none border-0 mt-1">
+                      {viewingCategory.sessionCount} Sessions
+                    </Badge>
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-6 pt-4 border-t border-border/50">
+                 <Button 
+                   className="bg-[#f97316] hover:bg-[#ea580c] text-white"
+                   onClick={() => openCategoryModal(viewingCategory)}
+                 >
+                   <Edit className="w-4 h-4 mr-2" /> Edit Category
+                 </Button>
+                 <Button 
+                   variant="destructive"
+                   className="bg-red-500 hover:bg-red-600 text-white"
+                   onClick={() => openDeleteModal('category', viewingCategory)}
+                 >
+                   <Trash2 className="w-4 h-4 mr-2" /> Delete
+                 </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* --- ADD / EDIT SESSION MODAL --- */}
       <Dialog open={isSessionModalOpen} onOpenChange={setIsSessionModalOpen}>

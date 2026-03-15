@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar as CalendarIcon, Clock, Filter, Search, ArrowUpDown, Eye, Wallet, Contact, Folder, CalendarDays, User } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Filter, Search, ArrowUpDown, Eye, Wallet, Contact, Folder, CalendarDays, User, CheckCircle2, XCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { isWithinInterval, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
@@ -161,6 +161,31 @@ export default function Bookings() {
 
     return filtered;
   }, [bookings, searchQuery, statusFilter, sessionFilter, dateFilterType, dateRange, sortField, sortDirection]);
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!selectedBooking) return;
+    
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: newStatus })
+        .eq('id', selectedBooking.id);
+
+      if (error) throw error;
+
+      toast.success(`Booking status updated to ${newStatus}`);
+      
+      // Update local state
+      setBookings(prev => prev.map(b => 
+        b.id === selectedBooking.id ? { ...b, status: newStatus } : b
+      ));
+      setSelectedBooking((prev: any) => ({ ...prev, status: newStatus }));
+
+    } catch (error: any) {
+      toast.error('Failed to update status: ' + error.message);
+      console.error('Update status error:', error);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
@@ -487,6 +512,46 @@ export default function Bookings() {
                    <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider mb-1">Booking Ref</span>
                    <span className="text-xs text-gray-300 font-mono bg-[#111317] px-2 py-1 rounded">{selectedBooking.id.split('-')[0]}</span>
                  </div>
+              </div>
+
+              {/* Manage Status */}
+              <div className="flex flex-col gap-2 p-4 rounded-lg border border-border/50 bg-[#111317]">
+                <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider">Manage Status</span>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    className={`flex-1 h-10 gap-2 border ${
+                      selectedBooking.status.toLowerCase() === 'confirmed' 
+                        ? 'bg-green-500/10 border-green-500/50 text-green-500 hover:bg-green-500/20 hover:text-green-500' 
+                        : 'border-border/50 text-gray-400 hover:text-white hover:bg-white/5 hover:border-white/10'
+                    }`}
+                    onClick={() => handleStatusChange('confirmed')}
+                  >
+                    <CheckCircle2 className="w-4 h-4" /> Confirm
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className={`flex-1 h-10 gap-2 border ${
+                      selectedBooking.status.toLowerCase() === 'pending' 
+                        ? 'bg-orange-500/10 border-orange-500/50 text-orange-500 hover:bg-orange-500/20 hover:text-orange-500' 
+                        : 'border-border/50 text-gray-400 hover:text-white hover:bg-white/5 hover:border-white/10'
+                    }`}
+                    onClick={() => handleStatusChange('pending')}
+                  >
+                    <Clock className="w-4 h-4" /> Pending
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className={`flex-1 h-10 gap-2 border ${
+                      selectedBooking.status.toLowerCase() === 'cancelled' 
+                        ? 'bg-red-500/10 border-red-500/50 text-red-500 hover:bg-red-500/20 hover:text-red-500' 
+                        : 'border-border/50 text-gray-400 hover:text-white hover:bg-white/5 hover:border-white/10'
+                    }`}
+                    onClick={() => handleStatusChange('cancelled')}
+                  >
+                    <XCircle className="w-4 h-4" /> Cancel
+                  </Button>
+                </div>
               </div>
 
               {/* Grid Details */}
