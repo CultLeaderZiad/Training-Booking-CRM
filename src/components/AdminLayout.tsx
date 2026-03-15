@@ -109,9 +109,6 @@ export default function AdminLayout() {
           <Link to="/admin" className="font-bold text-lg tracking-tight flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             <span className="text-white">DEV</span> <span className="text-[#f97316]">ADMIN</span>
           </Link>
-          <button className="md:hidden text-gray-400 hover:text-white" onClick={() => setSidebarOpen(false)}>
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
@@ -207,11 +204,11 @@ export default function AdminLayout() {
                     <span>Add Client</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="hover:bg-white/5 focus:bg-white/5 cursor-pointer">
-                  <Link to="/admin/bookings" className="w-full flex items-center text-gray-300 hover:text-white">
+                <DropdownMenuItem disabled className="cursor-not-allowed opacity-50">
+                  <div className="w-full flex items-center text-gray-300">
                     <Briefcase className="w-4 h-4 mr-2 text-orange-400" />
                     <span>Manual Booking</span>
-                  </Link>
+                  </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
