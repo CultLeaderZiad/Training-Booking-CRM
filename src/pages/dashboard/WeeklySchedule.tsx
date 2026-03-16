@@ -199,12 +199,42 @@ export default function WeeklySchedule() {
   };
 
   const fetchMyBookings = async () => {
+    if (!user) return;
     const { data } = await supabase
       .from('bookings')
       .select('scheduled_session_id')
-      .eq('user_id', user?.id)
+      .eq('user_id', user.id)
       .filter('status', 'neq', 'cancelled');
     setMyBookings(data?.map(b => b.scheduled_session_id) || []);
+  };
+
+  const jumpToNextSession = async (styleId?: string) => {
+    try {
+      setLoading(true);
+      const query = supabase
+        .from('sessions')
+        .select('start_time')
+        .gte('start_time', new Date().toISOString())
+        .order('start_time', { ascending: true })
+        .limit(1);
+      
+      if (styleId) {
+        query.eq('session_type_id', styleId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+      if (data) {
+        const nextDate = parseISO(data.start_time);
+        setSelectedDate(nextDate);
+        toast.info(`Moved to ${format(nextDate, 'MMMM d')} for the next session.`);
+      } else {
+        toast.error("No upcoming sessions found for this style.");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBook = async () => {
@@ -349,10 +379,23 @@ export default function WeeklySchedule() {
                    </div>
 
                    <Button 
-                     onClick={() => {
+                     onClick={async () => {
                         setSelectedStyleId(st.id);
                         setView('grid');
-                        // Global fetchSessions effect will now run and find the next session if current is empty
+                        // Proactively check if this week has sessions for this style
+                        const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+                        const weekEnd = addDays(weekStart, 7);
+                        
+                        const { count } = await supabase
+                          .from('sessions')
+                          .select('*', { count: 'exact', head: true })
+                          .eq('session_type_id', st.id)
+                          .gte('start_time', weekStart.toISOString())
+                          .lte('start_time', weekEnd.toISOString());
+
+                        if (!count || count === 0) {
+                          jumpToNextSession(st.id);
+                        }
                      }}
                      className="mt-auto h-14 bg-[#f97316] hover:bg-[#ea580c] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-[#f97316]/10"
                    >
@@ -516,15 +559,16 @@ export default function WeeklySchedule() {
                               </Button>
                             )}
                             
-                            {selectedStyleId && (
-                              <Button 
-                                variant="outline" 
-                                onClick={() => setSelectedStyleId(null)}
-                                className="border-white/10 text-gray-400 hover:text-white text-[10px] font-black uppercase tracking-[0.2em] h-12 px-8 rounded-xl"
-                              >
-                                Show All Styles
-                              </Button>
-                            )}
+                            <Button 
+                              variant="outline" 
+                              onClick={() => {
+                                setSelectedStyleId(null);
+                                setView('catalog');
+                              }}
+                              className="border-white/10 text-gray-400 hover:text-white text-[10px] font-black uppercase tracking-[0.2em] h-12 px-8 rounded-xl"
+                            >
+                              Show All Styles
+                            </Button>
                         </div>
                      </div>
                    )}
@@ -623,15 +667,15 @@ export default function WeeklySchedule() {
       <Sheet open={isBookingModalOpen} onOpenChange={setIsBookingModalOpen}>
         <SheetContent className="bg-[#111317] border-l border-white/5 text-white sm:max-w-[450px] p-0 flex flex-col h-full shadow-2xl">
           <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex-1 overflow-y-auto px-6 py-12 md:px-10">
-              <SheetHeader className="mb-10 text-left">
-              <div className="w-12 h-12 bg-[#f97316]/10 rounded-2xl flex items-center justify-center mb-6 border border-[#f97316]/20">
-                 <Zap className="w-6 h-6 text-[#f97316]" />
+            <div className="flex-1 overflow-y-auto px-6 py-8 md:px-10 md:py-12">
+              <SheetHeader className="mb-8 md:mb-10 text-left">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-[#f97316]/10 rounded-2xl flex items-center justify-center mb-4 md:mb-6 border border-[#f97316]/20">
+                 <Zap className="w-5 h-5 md:w-6 md:h-6 text-[#f97316]" />
               </div>
-              <SheetTitle className="text-3xl font-black uppercase tracking-tighter leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+              <SheetTitle className="text-2xl md:text-3xl font-black uppercase tracking-tighter leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                 Confirm Your<br />Session
               </SheetTitle>
-              <SheetDescription className="text-gray-500 text-xs font-medium italic mt-2">
+              <SheetDescription className="text-gray-500 text-[10px] md:text-xs font-medium italic mt-2">
                 Ready to level up? Review the details below to secure your spot.
               </SheetDescription>
             </SheetHeader>

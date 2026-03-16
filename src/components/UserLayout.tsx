@@ -165,7 +165,7 @@ export default function UserLayout() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="h-20 shrink-0 bg-[#1A1D24]/95 backdrop-blur-md border-b border-border/50 flex items-center justify-between px-4 md:px-8 sticky top-0 z-[100] transform translate-z-0 text-white shadow-xl">
+        <header className="h-20 shrink-0 bg-[#1A1D24] border-b border-white/5 flex items-center justify-between px-4 md:px-8 sticky top-0 z-[100] text-white shadow-2xl">
           <div className="flex items-center gap-4">
             <button className="md:hidden text-gray-400 hover:text-white" onClick={() => setSidebarOpen(true)}>
               <Menu className="w-6 h-6" />
@@ -215,7 +215,7 @@ export default function UserLayout() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 scroll-smooth bg-[#111317]">
-          <div className="max-w-[1600px] mx-auto w-full min-h-[calc(100vh-160px)] flex flex-col">
+          <div className="max-w-[1600px] mx-auto w-full min-h-[calc(100vh-80px-48px)] flex flex-col">
             <div className="flex-1">
               <Outlet />
             </div>

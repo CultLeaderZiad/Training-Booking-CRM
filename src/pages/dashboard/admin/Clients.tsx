@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from '../../../components/ui/dialog';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -211,6 +212,9 @@ export default function Clients() {
           <DialogContent className="bg-[#1A1D24] border border-border/50 text-white sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Add New Client</DialogTitle>
+              <DialogDescription>
+                Fill in the details below to register a new client profile.
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddClient} className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-4">
@@ -399,6 +403,9 @@ export default function Clients() {
                           <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold uppercase">You</span>
                         )}
                       </DialogTitle>
+                      <DialogDescription className="text-xs text-gray-500">
+                        View and manage client account details and role.
+                      </DialogDescription>
                       <span className={`inline-flex mt-1 items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase border ${selectedClient.role === 'admin' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : selectedClient.role === 'client' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}`}>
                         {selectedClient.role || 'USER'}
                       </span>

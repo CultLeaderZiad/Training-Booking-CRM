@@ -42,8 +42,8 @@ const StickyHeader = () => {
     <header
       className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 transform translate-z-0 ${
         scrolled 
-          ? "bg-[#1A1D24]/95 backdrop-blur-md border-b border-white/10 shadow-2xl py-4" 
-          : "bg-[#1A1D24]/40 backdrop-blur-sm border-b border-transparent py-5"
+          ? "bg-[#1A1D24]/98 backdrop-blur-xl border-b border-white/10 shadow-2xl py-4" 
+          : "bg-[#1A1D24]/90 border-b border-white/5 py-5"
       }`}
     >
       <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between transition-all duration-500">
@@ -75,10 +75,10 @@ const StickyHeader = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuItem asChild>
-                  <Link to="/profile" className="cursor-pointer w-full flex items-center">
-                    <User className="w-4 h-4 mr-2 text-muted-foreground" />
-                    <span>Profile</span>
+                <DropdownMenuItem asChild className="focus:bg-white/5">
+                  <Link to="/dashboard/profile-settings" className="cursor-pointer w-full flex items-center py-2 text-white">
+                    <User className="w-4 h-4 mr-3 text-primary" />
+                    <span className="font-bold">Profile Info</span>
                   </Link>
                 </DropdownMenuItem>
                 

@@ -29,11 +29,14 @@ type Booking = {
   profiles: {
     first_name: string;
     last_name: string;
-  } | null;
+  } | { first_name: string; last_name: string; }[] | null;
   session_types: {
     name: string;
     base_price: number;
-  } | null;
+  } | { name: string; base_price: number; }[] | null;
+  sessions: {
+    price: number;
+  } | { price: number; }[] | null;
 };
 
 type Profile = {
@@ -71,7 +74,7 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [bookingsRes, profilesRes, historyRes] = await Promise.all([
+      const [bookingsRes, profilesRes, historyRes, sessionsRes] = await Promise.all([
         supabase
           .from('bookings')
           .select(`
@@ -113,11 +116,11 @@ export default function AdminDashboard() {
       if (bookingsRes.error) throw bookingsRes.error;
       if (profilesRes.error) throw profilesRes.error;
 
-      setBookings(bookingsRes.data as any || []);
-      setProfiles(profilesRes.data as any || []);
+      setBookings((bookingsRes.data as unknown) as Booking[] || []);
+      setProfiles((profilesRes.data as unknown) as Profile[] || []);
       setAdminHistory(historyRes?.data || []);
-      const schedCount = sessionsRes?.data || [];
-      setScheduledSessions(schedCount);
+      const schedData = sessionsRes?.data || [];
+      setScheduledSessions(schedData);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -161,9 +164,12 @@ export default function AdminDashboard() {
     if (revenueMode === 'bookings') {
       revenue = bookingsInDateRange
         .filter(b => b.status === 'completed' || b.status === 'confirmed')
-        .reduce((sum, b) => sum + (b.sessions?.price || b.session_types?.base_price || 0), 0);
+        .reduce((sum, b) => {
+          const sPrice = Array.isArray(b.sessions) ? b.sessions[0]?.price : b.sessions?.price;
+          const stPrice = Array.isArray(b.session_types) ? b.session_types[0]?.base_price : b.session_types?.base_price;
+          return sum + (sPrice || stPrice || 0);
+        }, 0);
     } else {
-      // Sessions Pricing: Potential revenue from scheduled sessions in the date range
       revenue = scheduledSessions.filter(s => {
         const sDate = new Date(s.start_time);
         return isWithinInterval(sDate, { start: startDate, end: endDate });
@@ -194,11 +200,13 @@ export default function AdminDashboard() {
 
     // Map bookings to activity
     bookings.forEach(b => {
+      const profile = Array.isArray(b.profiles) ? b.profiles[0] : b.profiles;
+      const sessionType = Array.isArray(b.session_types) ? b.session_types[0] : b.session_types;
       activities.push({
         id: `activity_book_${b.id}`,
         type: 'booking',
         label: b.status === 'cancelled' ? 'Booking Cancelled' : b.status === 'confirmed' ? 'Booking Confirmed' : 'New Booking',
-        description: `${b.profiles?.first_name || 'Client'} for ${b.session_types?.name || 'a session'}`,
+        description: `${profile?.first_name || 'Client'} for ${sessionType?.name || 'a session'}`,
         timestamp: b.created_at,
         is_admin: false
       });

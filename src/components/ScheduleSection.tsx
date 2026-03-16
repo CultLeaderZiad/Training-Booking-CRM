@@ -53,12 +53,11 @@ const ScheduleSection = () => {
 
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
-    // If it's Sunday, we might want to default to next week's sessions as those are more relevant
-    if (today.getDay() === 0) {
-      return addDays(today, 1);
-    }
+    // Start with today, but if there's no sessions, the fetch effect will handle searching.
     return today;
   });
+  const [activeCategory, setActiveCategory] = useState<string>("ALL");
+  const [categories, setCategories] = useState<string[]>(["ALL"]);
 
   const currentWeekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
 
@@ -72,12 +71,43 @@ const ScheduleSection = () => {
       })
       .subscribe();
 
+    fetchCategories();
+
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedDate]);
+  }, [selectedDate, activeCategory]);
+
+  const fetchCategories = async () => {
+    const { data: catData } = await supabase.from('session_categories').select('name');
+    const { data: sessionData } = await supabase
+      .from('sessions')
+      .select('session_types(session_categories(name))')
+      .gte('start_time', startOfWeek(selectedDate, { weekStartsOn: 1 }).toISOString())
+      .lte('start_time', addDays(startOfWeek(selectedDate, { weekStartsOn: 1 }), 7).toISOString());
+
+    if (catData) {
+      // Get names of categories that actually HAVE sessions this week
+      const activeCatsThisWeek = new Set(
+        sessionData
+          ?.map((s: any) => s.session_types?.session_categories?.name?.trim().toUpperCase())
+          .filter(Boolean)
+      );
+
+      // Deduplicate all categories
+      const uniqueNames = Array.from(new Set(catData.map(c => c.name.trim().toUpperCase())));
+      
+      // Filter out empty categories unless it's the current active one or they are all empty
+      const filteredNames = uniqueNames.filter(name => 
+        name === "ALL" || activeCatsThisWeek.has(name) || name === activeCategory
+      );
+
+      setCategories(["ALL", ...filteredNames]);
+    }
+  };
 
   const [nextAvailableDate, setNextAvailableDate] = useState<Date | null>(null);
+  const [nextCategoryDate, setNextCategoryDate] = useState<Date | null>(null);
 
   const fetchSessions = async () => {
     try {
@@ -88,44 +118,62 @@ const ScheduleSection = () => {
       const weekEnd = addDays(weekStart, 7);
       weekEnd.setHours(23, 59, 59, 999);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('sessions')
         .select(`
           id, 
           title, 
           start_time, 
           capacity,
-          session_types (
+          session_types!inner (
             name,
             duration,
             location,
-            session_categories (
+            session_categories!inner (
               name
             )
           ),
           bookings:bookings(count)
         `)
         .gte('start_time', weekStart.toISOString())
-        .lte('start_time', weekEnd.toISOString())
-        .order('start_time', { ascending: true });
+        .lte('start_time', weekEnd.toISOString());
+
+      const { data, error } = await query.order('start_time', { ascending: true });
 
       if (error) throw error;
       
-      const foundSessions = data as any || [];
+      let foundSessions = data as any || [];
+      
+      // Filter by category in JS to handle case-duplicates correctly
+      if (activeCategory !== "ALL") {
+        foundSessions = foundSessions.filter((s: any) => 
+          s.session_types?.session_categories?.name?.trim().toUpperCase() === activeCategory
+        );
+      }
+      
       setSessions(foundSessions);
 
       if (foundSessions.length === 0) {
         // Find next available session across all future dates
-        const { data: nextData } = await supabase
+        let nextQuery = supabase
           .from('sessions')
-          .select('start_time')
+          .select('start_time, session_types!inner(session_categories!inner(name))')
           .gte('start_time', new Date().toISOString())
-          .order('start_time', { ascending: true })
-          .limit(1)
-          .maybeSingle();
+          .order('start_time', { ascending: true });
+        
+        const { data: nextData } = await nextQuery;
         
         if (nextData) {
-          setNextAvailableDate(parseISO(nextData.start_time));
+          // Find the first one that matches the category (case-insensitive)
+          const match = activeCategory === "ALL" 
+            ? nextData[0] 
+            : nextData.find((s: any) => s.session_types?.session_categories?.name?.trim().toUpperCase() === activeCategory);
+
+          if (match) {
+            const nextDate = parseISO(match.start_time);
+            if (activeCategory !== "ALL") setNextCategoryDate(nextDate);
+            else setNextAvailableDate(nextDate);
+          }
         }
       }
     } catch (error: any) {
@@ -189,6 +237,26 @@ const ScheduleSection = () => {
               {format(currentWeekStart, 'MMM d')} - {format(addDays(currentWeekStart, 6), 'MMM d')}
             </motion.div>
           </motion.div>
+        </div>
+
+        {/* Category Filters */}
+        <div className="flex flex-wrap gap-2 mb-12">
+          {categories.map((cat, idx) => (
+            <motion.button
+              key={cat}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              onClick={() => setActiveCategory(cat)}
+              className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all duration-300 ${
+                activeCategory === cat 
+                  ? 'bg-primary text-white border-primary shadow-[0_10px_20px_rgba(249,115,22,0.2)] scale-105' 
+                  : 'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:border-white/20'
+              }`}
+            >
+              {cat}
+            </motion.button>
+          ))}
         </div>
 
         <div className="flex flex-col lg:flex-row gap-12">
@@ -289,20 +357,24 @@ const ScheduleSection = () => {
               >
                 <CalendarIcon className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-muted-foreground mb-2">
-                  {nextAvailableDate ? "Next Training Available" : "No Sessions Scheduled This Week"}
+                  {activeCategory !== "ALL" ? `No ${activeCategory} Sessions Found` : "No Sessions Scheduled This Week"}
                 </h3>
                 <p className="text-sm text-muted-foreground/60 max-w-md mx-auto mb-6">
-                  {nextAvailableDate 
-                    ? `Join our next session on ${format(nextAvailableDate, 'EEEE, MMM d')} at ${format(nextAvailableDate, 'HH:mm')}.`
+                  {nextCategoryDate || nextAvailableDate 
+                    ? `Join our next ${activeCategory !== "ALL" ? activeCategory : ""} session on ${format(nextCategoryDate || nextAvailableDate!, 'EEEE, MMM d')} at ${format(nextCategoryDate || nextAvailableDate!, 'HH:mm')}.`
                     : "Our coach is working on the new schedule. Check back shortly or contact us to arrange a private session."
                   }
                 </p>
-                {nextAvailableDate ? (
+                {(nextCategoryDate || nextAvailableDate) ? (
                   <Button 
-                    onClick={() => setSelectedDate(nextAvailableDate)}
+                    onClick={() => setSelectedDate(nextCategoryDate || nextAvailableDate!)}
                     className="rounded-full bg-primary hover:bg-primary/90 text-white px-8 h-12 font-black uppercase tracking-widest"
                   >
                     View Next Sessions <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                ) : activeCategory !== "ALL" ? (
+                  <Button variant="outline" onClick={() => setActiveCategory("ALL")} className="rounded-full border-primary/20 hover:bg-primary/5 text-primary">
+                    Show All Styles
                   </Button>
                 ) : (
                   <Button variant="outline" className="rounded-full border-primary/20 hover:bg-primary/5 text-primary">
@@ -324,16 +396,17 @@ const ScheduleSection = () => {
                 <h3 className="text-xs font-black text-foreground uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                   <CalendarIcon className="w-4 h-4 text-primary" /> Select Week
                 </h3>
-                <div className="calendar-wrapper dark">
+                <div className="calendar-wrapper dark p-2 bg-black/20 rounded-2xl border border-white/5 shadow-inner">
                   <MiniCalendar
                     mode="single"
                     selected={selectedDate}
                     onSelect={(date) => {
                       if (date) {
                         setSelectedDate(date);
+                        fetchSessions();
                       }
                     }}
-                    className="rounded-xl border-none p-0 flex justify-center"
+                    className="rounded-xl border-none p-0 flex justify-center scale-95 origin-top"
                   />
                 </div>
               </div>
