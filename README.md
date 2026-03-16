@@ -44,3 +44,6 @@ This will start the app locally, typically accessible at `http://localhost:5173`
 - `npm run lint`: Runs ESLint to check for code quality.
 - `npm run preview`: Bootstraps a local web server to serve the production build.
 - `npm run test`: Runs the Vitest test suite.
+
+## Deployment
+This project is ready for deployment on **Vercel** or **v0**. For detailed instructions on setting up environment variables and configuration, please refer to the [DEPLOYMENT.md](./DEPLOYMENT.md) guide.
