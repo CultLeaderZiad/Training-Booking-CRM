@@ -34,6 +34,7 @@ const NAV_ITEMS = [
   { icon: Calendar, label: 'Sessions', href: '/admin/sessions' },
   { icon: Users, label: 'Clients', href: '/admin/clients' },
   { icon: BookOpen, label: 'Bookings', href: '/admin/bookings' },
+  { icon: User, label: 'Support Chat', href: '#', onClick: () => (window as any).voiceflow?.chat?.open() },
 ];
 
 export default function AdminLayout() {
@@ -141,11 +142,16 @@ export default function AdminLayout() {
             const isActive = location.pathname === item.href || (location.pathname.startsWith(item.href) && item.href !== '/admin');
             
             return (
-              <Link
-                key={item.href}
-                to={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              <button
+                key={item.href + (item.label)}
+                onClick={() => {
+                  if (item.onClick) {
+                    item.onClick();
+                  }
+                  setSidebarOpen(false);
+                  if (item.href !== '#') navigate(item.href);
+                }}
+                className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                   isActive 
                     ? 'bg-[#f97316]/10 text-[#f97316] font-medium' 
                     : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -153,7 +159,7 @@ export default function AdminLayout() {
               >
                 <Icon className={`w-5 h-5 ${isActive ? 'text-[#f97316]' : 'text-gray-500'}`} />
                 {item.label}
-              </Link>
+              </button>
             );
           })}
         </div>

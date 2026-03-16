@@ -214,21 +214,39 @@ export default function UserDashboard() {
          )}
       </div>
 
-      {/* Motivational Footer Card */}
-      <div className="bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-[40px] p-10 relative overflow-hidden group">
-         <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-white/10 blur-3xl rounded-full group-hover:scale-110 transition-transform duration-700" />
-         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
-            <div className="space-y-2">
-               <h3 className="text-2xl font-black text-white uppercase tracking-tight">New Level Unlocked?</h3>
-               <p className="text-white/80 text-sm font-medium">Keep your streak alive. Members who train at least 3x a week see 4x faster results.</p>
-            </div>
-            <Button 
-              onClick={() => navigate('/dashboard/bookings')}
-              className="bg-white text-[#f97316] hover:bg-white/90 px-8 h-14 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shrink-0"
-            >
-               Browse Schedule
-            </Button>
-         </div>
+      {/* Motivational & Help Cards */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-[40px] p-10 relative overflow-hidden group">
+           <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-white/10 blur-3xl rounded-full group-hover:scale-110 transition-transform duration-700" />
+           <div className="relative z-10 flex flex-col items-center justify-between h-full gap-8 text-center md:text-left">
+              <div className="space-y-2 w-full">
+                 <h3 className="text-2xl font-black text-white uppercase tracking-tight">New Level Unlocked?</h3>
+                 <p className="text-white/80 text-sm font-medium">Keep your streak alive. Members who train at least 3x a week see 4x faster results.</p>
+              </div>
+              <Button 
+                onClick={() => navigate('/dashboard/bookings')}
+                className="bg-white text-[#f97316] hover:bg-white/90 px-8 h-14 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] w-full md:w-auto"
+              >
+                 Browse Schedule
+              </Button>
+           </div>
+        </div>
+
+        <div className="bg-[#1A1D24] border border-border/50 rounded-[40px] p-10 relative overflow-hidden group hover:border-[#f97316]/30 transition-all">
+           <div className="absolute top-0 right-0 w-32 h-32 bg-[#f97316]/5 blur-3xl rounded-full" />
+           <div className="relative z-10 flex flex-col items-center justify-between h-full gap-8 text-center md:text-left">
+              <div className="space-y-2 w-full">
+                 <h3 className="text-2xl font-black text-white uppercase tracking-tight">Need Help?</h3>
+                 <p className="text-gray-400 text-sm font-medium">Have questions about your training or booking? Chat with our AI coach right now.</p>
+              </div>
+              <Button 
+                onClick={() => (window as any).voiceflow?.chat?.open()}
+                className="bg-[#1A1D24] border border-[#f97316] text-[#f97316] hover:bg-[#f97316] hover:text-white px-8 h-14 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] w-full md:w-auto transition-all"
+              >
+                 Open Chatbot
+              </Button>
+           </div>
+        </div>
       </div>
     </div>
   );

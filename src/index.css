@@ -61,3 +61,15 @@
     font-family: 'Space Grotesk', sans-serif;
   }
 }
+
+/* Voiceflow Widget Accessibility */
+#voiceflow-chat-frame {
+  z-index: 999999 !important;
+}
+
+@media (max-width: 768px) {
+  #voiceflow-chat-frame {
+    bottom: 20px !important;
+    right: 20px !important;
+  }
+}

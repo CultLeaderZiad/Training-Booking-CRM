@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { icon: Calendar, label: 'My Bookings', href: '/dashboard/my-bookings' },
   { icon: Plus, label: 'Book a Session', href: '/dashboard/bookings' },
   { icon: Bell, label: 'Notifications', href: '/dashboard/notifications' },
+  { icon: User, label: 'Support Chat', href: '#', onClick: () => (window as any).voiceflow?.chat?.open() },
 ];
 
 const ACCOUNT_ITEMS = [
@@ -96,11 +97,16 @@ export default function UserLayout() {
                 const isActive = location.pathname === item.href;
                 
                 return (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  <button
+                    key={item.href + (item.label)}
+                    onClick={() => {
+                      if (item.onClick) {
+                        item.onClick();
+                      }
+                      setSidebarOpen(false);
+                      if (item.href !== '#') navigate(item.href);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                       isActive 
                         ? 'bg-[#f97316]/10 text-[#f97316] font-extrabold shadow-[inset_0_0_20px_rgba(249,115,22,0.05)]' 
                         : 'text-gray-400 hover:text-white hover:bg-white/[0.03]'
@@ -108,7 +114,7 @@ export default function UserLayout() {
                   >
                     <Icon className={`w-5 h-5 ${isActive ? 'text-[#f97316]' : 'text-gray-500'}`} />
                     <span className="text-sm">{item.label}</span>
-                  </Link>
+                  </button>
                 );
               })}
               

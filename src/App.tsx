@@ -23,6 +23,7 @@ import WeeklySchedule from "./pages/dashboard/WeeklySchedule";
 import MyBookings from "./pages/dashboard/MyBookings";
 import Notifications from "./pages/dashboard/Notifications";
 import ProfileSettings from "./pages/dashboard/ProfileSettings";
+import VoiceflowChat from "./components/VoiceflowChat";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <VoiceflowChat />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
