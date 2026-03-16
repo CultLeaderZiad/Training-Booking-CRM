@@ -19,7 +19,7 @@ const HeroSection = () => {
             "url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&q=80')",
         }}
       />
-      <div className="absolute inset-0 bg-background/85" />
+      <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-background/40 to-background" />
 
       <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
         <motion.div

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -11,6 +11,9 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const sessionId = searchParams.get('sessionId');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +39,14 @@ export default function Login() {
       if (profile?.role === 'admin') {
         navigate('/admin');
       } else {
-        navigate('/dashboard');
+        const intent = location.state as any;
+        const targetSessionId = sessionId || intent?.intentSessionId;
+        
+        if (targetSessionId) {
+          navigate(`/dashboard/bookings?sessionId=${targetSessionId}`);
+        } else {
+          navigate('/dashboard');
+        }
       }
     }
     
@@ -85,10 +95,19 @@ export default function Login() {
           </Button>
         </form>
         
-        <div className="text-center text-sm text-zinc-400">
-          Don't have an account?{' '}
-          <Link to="/signup" className="text-primary hover:underline font-medium hover:text-primary/90">
-            Sign up
+        <div className="text-center space-y-4">
+          <div className="text-sm text-zinc-400">
+            Don't have an account?{' '}
+            <Link 
+              to={`/signup${sessionId ? `?sessionId=${sessionId}` : ''}`} 
+              state={location.state}
+              className="text-primary hover:underline font-medium hover:text-primary/90"
+            >
+              Sign up
+            </Link>
+          </div>
+          <Link to="/" className="inline-block text-xs text-zinc-500 hover:text-white transition-colors">
+            ← Back to home
           </Link>
         </div>
       </div>

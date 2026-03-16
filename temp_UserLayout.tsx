@@ -111,15 +111,6 @@ export default function UserLayout() {
                   </Link>
                 );
               })}
-              
-              <Link
-                to="/"
-                onClick={() => setSidebarOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-gray-400 hover:text-white hover:bg-white/[0.03] mt-2 border-t border-white/5 pt-4"
-              >
-                <LayoutDashboard className="w-5 h-5 text-gray-500" />
-                <span className="text-sm">Visit Website</span>
-              </Link>
             </div>
           </div>
 
@@ -165,7 +156,7 @@ export default function UserLayout() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="h-20 shrink-0 bg-[#1A1D24]/95 backdrop-blur-md border-b border-border/50 flex items-center justify-between px-4 md:px-8 sticky top-0 z-[100] transform translate-z-0 text-white shadow-xl">
+        <header className="h-16 shrink-0 bg-[#1A1D24] border-b border-border/50 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
           <div className="flex items-center gap-4">
             <button className="md:hidden text-gray-400 hover:text-white" onClick={() => setSidebarOpen(true)}>
               <Menu className="w-6 h-6" />
@@ -183,13 +174,6 @@ export default function UserLayout() {
           </div>
 
           <div className="flex items-center gap-4">
-            <Link 
-              to="/" 
-              className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors mr-2 px-3 py-1.5 rounded-full hover:bg-white/5"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Visit Website</span>
-            </Link>
             <Button 
               variant="outline" 
               size="sm" 
@@ -214,21 +198,8 @@ export default function UserLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 scroll-smooth bg-[#111317]">
-          <div className="max-w-[1600px] mx-auto w-full min-h-[calc(100vh-160px)] flex flex-col">
-            <div className="flex-1">
-              <Outlet />
-            </div>
-            
-            <footer className="mt-20 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] pb-8">
-              <p>© 2026 ALEX MORENO. TRAINING CRM V2.0</p>
-              <div className="flex items-center gap-6">
-                <Link to="/profile" className="hover:text-white transition-colors">Support</Link>
-                <Link to="/profile" className="hover:text-white transition-colors">Privacy</Link>
-                <Link to="/profile" className="hover:text-white transition-colors">Terms</Link>
-              </div>
-            </footer>
-          </div>
+        <main className="flex-1 overflow-x-hidden p-6 md:p-8 lg:p-12 max-w-[1600px] mx-auto w-full">
+          <Outlet />
         </main>
       </div>
     </div>

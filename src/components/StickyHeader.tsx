@@ -40,12 +40,14 @@ const StickyHeader = () => {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-background/90 backdrop-blur-md border-b border-border" : "bg-transparent"
+      className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 transform translate-z-0 ${
+        scrolled 
+          ? "bg-[#1A1D24]/95 backdrop-blur-md border-b border-white/10 shadow-2xl py-4" 
+          : "bg-[#1A1D24]/40 backdrop-blur-sm border-b border-transparent py-5"
       }`}
     >
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <a href="#" className="font-bold text-lg tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+      <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between transition-all duration-500">
+        <a href="#" className="font-bold text-xl tracking-tighter text-white flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
           ALEX <span className="text-primary">MORENO</span>
         </a>
 
@@ -55,7 +57,7 @@ const StickyHeader = () => {
             <button
               key={l.href}
               onClick={() => handleNavClick(l.href)}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm font-bold text-gray-300 hover:text-white transition-all hover:scale-105 active:scale-95"
             >
               {l.label}
             </button>
@@ -105,7 +107,7 @@ const StickyHeader = () => {
             </DropdownMenu>
           ) : (
             <Link to="/login">
-              <Button size="sm" variant="ghost" className="rounded-lg font-medium text-muted-foreground hover:text-foreground">
+              <Button size="sm" variant="ghost" className="rounded-lg font-bold text-gray-300 hover:text-white hover:bg-white/5">
                 Login
               </Button>
             </Link>

@@ -39,97 +39,33 @@ export default function WeeklySchedule() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('ALL');
   const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
-  const [nextAvailableDate, setNextAvailableDate] = useState<Date | null>(null);
-  const [nextStyleDate, setNextStyleDate] = useState<Date | null>(null);
 
   // Weekly navigation state
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const today = new Date();
-    // If it's Sunday, move to next week for a fresh start
-    if (today.getDay() === 0) {
-      return addDays(today, 1);
-    }
-    return today;
-  });
-
-  const currentWeekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+  const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
 
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
+    fetchSessions();
     fetchSessionTypes();
     if (user) fetchMyBookings();
-  }, [user]);
+  }, [currentWeekStart, user]);
 
+  // Handle booking intent from landing page
   useEffect(() => {
-    fetchSessions();
-  }, [selectedDate, selectedStyleId]);
-
-  useEffect(() => {
-    const sessionsChannel = supabase
-      .channel('public:sessions')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, () => {
-        fetchSessions();
-      })
-      .subscribe();
-
-    const bookingsChannel = supabase
-      .channel('public:bookings')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
-        fetchSessions();
-        if (user) fetchMyBookings();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(sessionsChannel);
-      supabase.removeChannel(bookingsChannel);
-    };
-  }, [selectedDate, user]);
-
-  const searchParams = new URLSearchParams(location.search);
-  const urlSessionId = searchParams.get('sessionId');
-
-  // Handle booking intent from landing page or URL param
-  useEffect(() => {
-    const intentId = urlSessionId || location.state?.intentSessionId;
-    if (sessions.length > 0 && intentId) {
+    if (sessions.length > 0 && location.state?.intentSessionId) {
+      const intentId = location.state.intentSessionId;
       const session = sessions.find(s => s.id === intentId);
       
       if (session) {
         setSelectedSession(session);
         setIsBookingModalOpen(true);
-        // Clear intent state/params to prevent re-opening
-        navigate(location.pathname, { replace: true });
-      } else {
-        // If session not in this week, try to fetch it specifically
-        const fetchTargetSession = async () => {
-          const { data } = await supabase
-            .from('sessions')
-            .select(`
-              *, 
-              session_types(
-                *,
-                session_categories(name)
-              ), 
-              bookings:bookings(count)
-            `)
-            .eq('id', intentId)
-            .single();
-          
-          if (data) {
-            const sessionDate = parseISO(data.start_time);
-            setSelectedDate(sessionDate);
-            setSelectedSession(data);
-            setIsBookingModalOpen(true);
-            navigate(location.pathname, { replace: true });
-          }
-        };
-        fetchTargetSession();
+        // Clear intent state to prevent re-opening
+        navigate(location.pathname, { replace: true, state: { ...location.state, intentSessionId: undefined } });
       }
     }
-  }, [sessions, urlSessionId, location.state]);
+  }, [sessions, location.state]);
 
   const fetchSessionTypes = async () => {
     const { data } = await supabase.from('session_types').select('*').eq('is_active', true);
@@ -139,13 +75,14 @@ export default function WeeklySchedule() {
   const fetchSessions = async () => {
     try {
       setLoading(true);
-      setNextAvailableDate(null);
-      setNextStyleDate(null);
-
-      const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+      const weekStart = new Date(currentWeekStart);
       weekStart.setHours(0, 0, 0, 0);
-      const weekEnd = addDays(weekStart, 7);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
       weekEnd.setHours(23, 59, 59, 999);
+
+      const weekStartStr = weekStart.toISOString();
+      const weekEndStr = weekEnd.toISOString();
 
       const { data, error } = await supabase
         .from('sessions')
@@ -157,40 +94,12 @@ export default function WeeklySchedule() {
           ), 
           bookings:bookings(count)
         `)
-        .gte('start_time', weekStart.toISOString())
-        .lte('start_time', weekEnd.toISOString())
+        .gte('start_time', weekStartStr)
+        .lte('start_time', weekEndStr)
         .order('start_time', { ascending: true });
 
       if (error) throw error;
-      
-      const foundSessions = data || [];
-      setSessions(foundSessions);
-
-      // Check if current view (grid/calendar) with potential style filter is empty
-      const filtered = selectedStyleId 
-        ? foundSessions.filter(s => s.session_type_id === selectedStyleId)
-        : foundSessions;
-
-      if (filtered.length === 0) {
-        // Find next available session
-        const query = supabase
-          .from('sessions')
-          .select('start_time')
-          .gte('start_time', new Date().toISOString())
-          .order('start_time', { ascending: true })
-          .limit(1);
-        
-        if (selectedStyleId) {
-          query.eq('session_type_id', selectedStyleId);
-        }
-
-        const { data: nextData } = await query.maybeSingle();
-        
-        if (nextData) {
-          if (selectedStyleId) setNextStyleDate(parseISO(nextData.start_time));
-          else setNextAvailableDate(parseISO(nextData.start_time));
-        }
-      }
+      setSessions(data || []);
     } catch (error: any) {
       toast.error('Error fetching sessions: ' + error.message);
     } finally {
@@ -349,10 +258,35 @@ export default function WeeklySchedule() {
                    </div>
 
                    <Button 
-                     onClick={() => {
+                     onClick={async () => {
                         setSelectedStyleId(st.id);
+                        
+                        // Check if sessions exist for this style in the current week
+                        const styleSessions = sessions.filter(s => s.session_type_id === st.id);
+                        
+                        if (styleSessions.length === 0) {
+                           // Try to find the next available session for this style
+                           setLoading(true);
+                           const { data: nextSession } = await supabase
+                              .from('sessions')
+                              .select('start_time')
+                              .eq('session_type_id', st.id)
+                              .gte('start_time', new Date().toISOString())
+                              .order('start_time', { ascending: true })
+                              .limit(1)
+                              .single();
+                           
+                           if (nextSession) {
+                              const nextDate = parseISO(nextSession.start_time);
+                              setCurrentWeekStart(startOfWeek(nextDate, { weekStartsOn: 1 }));
+                              toast.info(`Showing sessions for the week of ${format(nextDate, 'MMM d')}`);
+                           } else {
+                              toast.info("No future sessions found for this style yet.");
+                           }
+                           setLoading(false);
+                        }
+                        
                         setView('grid');
-                        // Global fetchSessions effect will now run and find the next session if current is empty
                      }}
                      className="mt-auto h-14 bg-[#f97316] hover:bg-[#ea580c] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-[#f97316]/10"
                    >
@@ -382,17 +316,13 @@ export default function WeeklySchedule() {
 
              <div className="flex items-center gap-4">
                 <div className="flex items-center bg-black/20 rounded-xl border border-white/5 p-1">
-                   <Button variant="ghost" size="icon" onClick={() => setSelectedDate(prev => addDays(prev, -7))} className="text-gray-400 hover:text-white h-8 w-8">
+                   <Button variant="ghost" size="icon" onClick={() => setCurrentWeekStart(addDays(currentWeekStart, -7))} className="text-gray-400 hover:text-white h-8 w-8">
                       <ChevronLeft className="w-4 h-4" />
                    </Button>
-                   <Button 
-                      variant="ghost" 
-                      onClick={() => setSelectedDate(new Date())}
-                      className="text-[10px] font-black text-white px-4 uppercase tracking-widest hover:text-[#f97316] transition-colors"
-                    >
-                      {format(currentWeekStart, 'MMM d')} - {format(addDays(currentWeekStart, 6), 'MMM d')}
-                    </Button>
-                   <Button variant="ghost" size="icon" onClick={() => setSelectedDate(prev => addDays(prev, 7))} className="text-gray-400 hover:text-white h-8 w-8">
+                   <span className="text-[10px] font-black text-white px-4 uppercase tracking-widest">
+                     {format(currentWeekStart, 'MMM d')} - {format(addDays(currentWeekStart, 6), 'MMM d')}
+                   </span>
+                   <Button variant="ghost" size="icon" onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))} className="text-gray-400 hover:text-white h-8 w-8">
                       <ChevronRight className="w-4 h-4" />
                    </Button>
                 </div>
@@ -492,40 +422,27 @@ export default function WeeklySchedule() {
                          );
                        })
                    ) : (
-                     <div className="col-span-full py-24 text-center bg-[#1A1D24] border border-dashed border-border/50 rounded-[40px] px-6">
-                        <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                          <Calendar className="w-8 h-8 text-gray-600" />
-                        </div>
-                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">
-                          {selectedStyleId ? "No sessions found for this style" : "No matching sessions this week"}
-                        </h3>
-                        <p className="text-gray-500 text-sm max-w-sm mx-auto mb-8 font-medium">
-                          {(nextStyleDate || nextAvailableDate) 
-                            ? `We found a session on ${format(nextStyleDate || nextAvailableDate!, 'EEEE, MMM d')}. Would you like to check it out?`
-                            : "Our coach is updating the upcoming schedule. Check back shortly or contact us for private sessions."
-                          }
-                        </p>
-                        
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                            {(nextStyleDate || nextAvailableDate) && (
-                              <Button 
-                                onClick={() => setSelectedDate(nextStyleDate || nextAvailableDate!)}
-                                className="bg-[#f97316] hover:bg-[#ea580c] text-white text-[10px] font-black uppercase tracking-[0.2em] h-12 px-8 rounded-xl shadow-lg shadow-[#f97316]/20"
-                              >
-                                View Next Session <ChevronRight className="w-4 h-4 ml-2" />
-                              </Button>
-                            )}
-                            
+                     <div className="col-span-full py-20 text-center bg-[#1A1D24] border border-dashed border-border/50 rounded-3xl">
+                        <Calendar className="w-12 h-12 text-gray-700 mx-auto mb-4" />
+                         <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">No matching sessions this week.</p>
+                         <div className="flex flex-col items-center gap-3 mt-6">
                             {selectedStyleId && (
                               <Button 
-                                variant="outline" 
+                                variant="link" 
                                 onClick={() => setSelectedStyleId(null)}
-                                className="border-white/10 text-gray-400 hover:text-white text-[10px] font-black uppercase tracking-[0.2em] h-12 px-8 rounded-xl"
+                                className="text-[#f97316] text-[10px] font-black uppercase"
                               >
-                                Show All Styles
+                                Show all session styles
                               </Button>
                             )}
-                        </div>
+                            <Button 
+                              variant="outline"
+                              onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))}
+                              className="border-[#f97316]/20 text-[#f97316] text-[10px] font-black uppercase tracking-widest h-10 px-6 rounded-xl hover:bg-[#f97316]/10"
+                            >
+                               Try Next Week <ChevronRight className="w-3.5 h-3.5 ml-2" />
+                            </Button>
+                         </div>
                      </div>
                    )}
                 </div>
@@ -593,13 +510,9 @@ export default function WeeklySchedule() {
                   <div className="calendar-wrapper dark">
                     <MiniCalendar
                       mode="single"
-                      selected={selectedDate}
-                      onSelect={(date) => {
-                        if (date) {
-                          setSelectedDate(date);
-                        }
-                      }}
-                      className="rounded-xl border-none p-0 flex justify-center"
+                      selected={currentWeekStart}
+                      onSelect={(date) => date && setCurrentWeekStart(startOfWeek(date, { weekStartsOn: 1 }))}
+                      className="rounded-xl border-none p-0"
                     />
                   </div>
                 </div>

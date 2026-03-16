@@ -2,20 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useBooking } from "@/hooks/use-booking";
 import { Button } from "@/components/ui/button";
-import { 
-  MapPin, 
-  Clock, 
-  Users, 
-  ArrowRight, 
-  Calendar as CalendarIcon, 
-  ChevronLeft, 
-  ChevronRight,
-  Search,
-  Filter,
-  CheckCircle2,
-  XCircle,
-  LayoutGrid
-} from "lucide-react";
+import { MapPin, Clock, Users, ArrowRight, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { format, startOfWeek, addDays, parseISO, isValid } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -51,42 +38,17 @@ const ScheduleSection = () => {
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<Session[]>([]);
 
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const today = new Date();
-    // If it's Sunday, we might want to default to next week's sessions as those are more relevant
-    if (today.getDay() === 0) {
-      return addDays(today, 1);
-    }
-    return today;
-  });
-
-  const currentWeekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+  const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
 
   useEffect(() => {
     fetchSessions();
-
-    const channel = supabase
-      .channel('public:sessions_landing')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, () => {
-        fetchSessions();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [selectedDate]);
-
-  const [nextAvailableDate, setNextAvailableDate] = useState<Date | null>(null);
+  }, [currentWeekStart]);
 
   const fetchSessions = async () => {
     try {
       setLoading(true);
-      setNextAvailableDate(null);
-      const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
-      weekStart.setHours(0, 0, 0, 0);
+      const weekStart = currentWeekStart;
       const weekEnd = addDays(weekStart, 7);
-      weekEnd.setHours(23, 59, 59, 999);
 
       const { data, error } = await supabase
         .from('sessions')
@@ -110,24 +72,7 @@ const ScheduleSection = () => {
         .order('start_time', { ascending: true });
 
       if (error) throw error;
-      
-      const foundSessions = data as any || [];
-      setSessions(foundSessions);
-
-      if (foundSessions.length === 0) {
-        // Find next available session across all future dates
-        const { data: nextData } = await supabase
-          .from('sessions')
-          .select('start_time')
-          .gte('start_time', new Date().toISOString())
-          .order('start_time', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        
-        if (nextData) {
-          setNextAvailableDate(parseISO(nextData.start_time));
-        }
-      }
+      setSessions(data as any || []);
     } catch (error: any) {
       console.error("Error fetching sessions:", error);
       toast.error("Could not load schedule");
@@ -167,17 +112,13 @@ const ScheduleSection = () => {
             className="flex items-center gap-4"
           >
             <div className="flex items-center bg-black/20 rounded-xl border border-white/5 p-1">
-               <Button variant="ghost" size="icon" onClick={() => setSelectedDate(prev => addDays(prev, -7))} className="text-gray-400 hover:text-white h-8 w-8">
+               <Button variant="ghost" size="icon" onClick={() => setCurrentWeekStart(prev => addDays(prev, -7))} className="text-gray-400 hover:text-white h-8 w-8">
                   <ChevronLeft className="w-4 h-4" />
                </Button>
-               <Button 
-                variant="ghost" 
-                onClick={() => setSelectedDate(new Date())}
-                className="text-[10px] font-black text-white px-4 uppercase tracking-widest hover:text-primary transition-colors"
-               >
+               <span className="text-[10px] font-black text-white px-4 uppercase tracking-widest">
                  {format(currentWeekStart, 'MMM d')} - {format(addDays(currentWeekStart, 6), 'MMM d')}
-               </Button>
-               <Button variant="ghost" size="icon" onClick={() => setSelectedDate(prev => addDays(prev, 7))} className="text-gray-400 hover:text-white h-8 w-8">
+               </span>
+               <Button variant="ghost" size="icon" onClick={() => setCurrentWeekStart(prev => addDays(prev, 7))} className="text-gray-400 hover:text-white h-8 w-8">
                   <ChevronRight className="w-4 h-4" />
                </Button>
             </div>
@@ -288,27 +229,13 @@ const ScheduleSection = () => {
                 className="text-center py-20 bg-muted/20 rounded-[32px] border border-dashed border-border/50"
               >
                 <CalendarIcon className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-muted-foreground mb-2">
-                  {nextAvailableDate ? "Next Training Available" : "No Sessions Scheduled This Week"}
-                </h3>
-                <p className="text-sm text-muted-foreground/60 max-w-md mx-auto mb-6">
-                  {nextAvailableDate 
-                    ? `Join our next session on ${format(nextAvailableDate, 'EEEE, MMM d')} at ${format(nextAvailableDate, 'HH:mm')}.`
-                    : "Our coach is working on the new schedule. Check back shortly or contact us to arrange a private session."
-                  }
+                <h3 className="text-lg font-bold text-muted-foreground mb-2">No Sessions Scheduled This Week</h3>
+                <p className="text-sm text-muted-foreground/60 max-w-md mx-auto">
+                  Our coach is working on the new schedule. Check back shortly or contact us to arrange a private session.
                 </p>
-                {nextAvailableDate ? (
-                  <Button 
-                    onClick={() => setSelectedDate(nextAvailableDate)}
-                    className="rounded-full bg-primary hover:bg-primary/90 text-white px-8 h-12 font-black uppercase tracking-widest"
-                  >
-                    View Next Sessions <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                ) : (
-                  <Button variant="outline" className="rounded-full border-primary/20 hover:bg-primary/5 text-primary">
-                    Contact Alex Moreno
-                  </Button>
-                )}
+                <Button variant="outline" className="mt-6 rounded-full border-primary/20 hover:bg-primary/5 text-primary">
+                  Contact Alex Moreno
+                </Button>
               </motion.div>
             )}
           </div>
@@ -327,13 +254,9 @@ const ScheduleSection = () => {
                 <div className="calendar-wrapper dark">
                   <MiniCalendar
                     mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => {
-                      if (date) {
-                        setSelectedDate(date);
-                      }
-                    }}
-                    className="rounded-xl border-none p-0 flex justify-center"
+                    selected={currentWeekStart}
+                    onSelect={(date) => date && setCurrentWeekStart(startOfWeek(date, { weekStartsOn: 1 }))}
+                    className="rounded-xl border-none p-0"
                   />
                 </div>
               </div>

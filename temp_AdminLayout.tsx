@@ -206,15 +206,7 @@ export default function AdminLayout() {
 
           {/* Right Header Controls */}
           <div className="flex items-center gap-3 shrink-0 pl-4">
-            {/* Visit Website Link */}
-            <Link 
-              to="/" 
-              className="flex items-center gap-2 text-xs font-medium text-gray-400 hover:text-white transition-colors mr-2 px-3 py-1.5 rounded-full hover:bg-white/5"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Visit Website</span>
-            </Link>
-
+            
             {/* Quick Action */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
