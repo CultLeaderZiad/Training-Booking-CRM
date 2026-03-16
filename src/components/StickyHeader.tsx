@@ -41,13 +41,13 @@ const StickyHeader = () => {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 transform translate-z-0 ${
-        scrolled 
-          ? "bg-[#1A1D24]/98 backdrop-blur-xl border-b border-white/10 shadow-2xl py-4" 
-          : "bg-[#1A1D24]/90 border-b border-white/5 py-5"
+        scrolled
+        ? "bg-background/98 backdrop-blur-xl border-b border-border shadow-2xl py-4"
+        : "bg-background/90 border-b border-border/50 py-5"
       }`}
     >
       <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between transition-all duration-500">
-        <a href="#" className="font-bold text-xl tracking-tighter text-white flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+        <a href="#" className="font-bold text-xl tracking-tighter text-foreground flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
           ALEX <span className="text-primary">MORENO</span>
         </a>
 
@@ -57,7 +57,7 @@ const StickyHeader = () => {
             <button
               key={l.href}
               onClick={() => handleNavClick(l.href)}
-              className="text-sm font-bold text-gray-300 hover:text-white transition-all hover:scale-105 active:scale-95"
+              className="text-sm font-bold text-muted-foreground hover:text-foreground transition-all hover:scale-105 active:scale-95"
             >
               {l.label}
             </button>
@@ -75,8 +75,8 @@ const StickyHeader = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuItem asChild className="focus:bg-white/5">
-                  <Link to="/dashboard/profile-settings" className="cursor-pointer w-full flex items-center py-2 text-white">
+                <DropdownMenuItem asChild className="focus:bg-secondary/50">
+                  <Link to="/dashboard/profile-settings" className="cursor-pointer w-full flex items-center py-2 text-foreground">
                     <User className="w-4 h-4 mr-3 text-primary" />
                     <span className="font-bold">Profile Info</span>
                   </Link>
@@ -107,7 +107,7 @@ const StickyHeader = () => {
             </DropdownMenu>
           ) : (
             <Link to="/login">
-              <Button size="sm" variant="ghost" className="rounded-lg font-bold text-gray-300 hover:text-white hover:bg-white/5">
+              <Button size="sm" variant="ghost" className="rounded-lg font-bold text-muted-foreground hover:text-foreground hover:bg-secondary/50">
                 Login
               </Button>
             </Link>
